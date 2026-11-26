@@ -1,0 +1,6 @@
+{
+  "test": "atomicity-test",
+  "saveFailed": true,
+  "assetRowsAfterFailedSave": 0,
+  "pass": true
+}

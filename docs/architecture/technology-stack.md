@@ -25,9 +25,9 @@ Retained for traceability only. It compared backend languages before .NET was co
 | Backend runtime | .NET 10 LTS (C#) | Decided (ADR 0001); pin patched SDK/runtime in `global.json` and images |
 | API | ASP.NET Core minimal APIs/controllers, built-in OpenAPI | Decided (ADR 0001) |
 | Auth | ASP.NET Core OpenID Connect + cookie handlers, antiforgery, policy authorization | Adopt; provider decision #9 (Keycloak candidate) |
-| Data | PostgreSQL 18; EF Core + Npgsql, migration bundles | Proposed ADR 0005; validate in #4 PoC |
-| Jobs | .NET worker, in-house Npgsql consumer behind `IJobQueue`; Wolverine if needs grow; no broker | Proposed ADR 0002; validate in spike |
-| Media | NetVips or SkiaSharp (Magick.NET for extended formats); MetadataExtractor / ExifTool; ClamAV | Prefer permissive candidates; validate format coverage, native SBOM, isolation and performance |
+| Data | PostgreSQL 18; EF Core + Npgsql, migration bundles | Accepted ADR 0005 (spike); composite keys checked in #4 |
+| Jobs | .NET worker, in-house Npgsql consumer behind `IJobQueue`; Wolverine if needs grow; no broker | Accepted ADR 0002 (spike: 20 kills, pass) |
+| Media | SkiaSharp (NetVips if extended formats are added); MetadataExtractor; ClamAV | Spike recommendation; XmpCore license review pending (ADR 0003) |
 | Frontend | React, Vite, TypeScript, Tailwind, shadcn/ui; Node.js 24/26 LTS as build tooling only | Adopt provisionally |
 | UI data | TanStack Query/Table; TS client generated from OpenAPI | Adopt provisionally |
 | Search | PostgreSQL FTS, pg_trgm | Adopt provisionally; benchmark #6; defer OpenSearch |

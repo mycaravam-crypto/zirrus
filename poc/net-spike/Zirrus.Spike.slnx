@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Zirrus.Spike.Api/Zirrus.Spike.Api.csproj" />
+    <Project Path="src/Zirrus.Spike.Application/Zirrus.Spike.Application.csproj" />
+    <Project Path="src/Zirrus.Spike.Domain/Zirrus.Spike.Domain.csproj" />
+    <Project Path="src/Zirrus.Spike.Infrastructure/Zirrus.Spike.Infrastructure.csproj" />
+    <Project Path="src/Zirrus.Spike.Worker/Zirrus.Spike.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Zirrus.Spike.Harness/Zirrus.Spike.Harness.csproj" />
+    <Project Path="tools/Zirrus.Spike.Media/Zirrus.Spike.Media.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,2 @@
+{"engine":"netvips","file":"photo-50mp.jpg","renders":20,"seconds":25.7,"thumbnailAndPreviewPerMinute":46.6,"peakRssMiB":238.9}
+{"engine":"skia","file":"photo-50mp.jpg","renders":20,"seconds":19.8,"thumbnailAndPreviewPerMinute":60.7,"peakRssMiB":83.3}

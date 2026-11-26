@@ -10,11 +10,11 @@ Prefer first-party .NET APIs and maintained permissive OSS. No mandatory paid li
 | Use-case dispatch | ASP.NET Core DI + direct application services | MIT framework | MediatR dependency |
 | Mapping | Explicit C# mapping; Mapperly if repetition warrants | Project Apache-2.0 / Mapperly Apache-2.0 | AutoMapper |
 | Validation | ASP.NET Core validation / FluentValidation if needed | MIT / Apache-2.0 | Paid validation framework |
-| Job queue | In-house Npgsql consumer behind an `IJobQueue` port; Wolverine if requirements grow | PostgreSQL / MIT | MassTransit v9+, Hangfire Pro |
+| Job queue | In-house Npgsql consumer behind an `IJobQueue` port (validated, ADR 0002); Wolverine if requirements grow | PostgreSQL / MIT | MassTransit v9+, Hangfire Pro |
 | Assertions | xUnit built-in assertions; Shouldly optional | Apache-2.0 / BSD-3-Clause | FluentAssertions v8+ |
 | Mocking | Hand-written fakes; NSubstitute if needed | Project Apache-2.0 / BSD-3-Clause | Unnecessary mocking packages |
-| Image rendering | NetVips vs. SkiaSharp (spike decides); Magick.NET only for extended formats | MIT wrapper + LGPL libvips / MIT + BSD-3 Skia / Apache-2.0 wrapper + bundled delegates | ImageSharp split-license default |
-| Metadata | MetadataExtractor; ExifTool fallback for missing fields | Apache-2.0 / Perl terms | Proprietary SDK |
+| Image rendering | SkiaSharp for JPEG/PNG/WebP (spike recommendation); NetVips if TIFF/HEIC/RAW are added | MIT + bundled BSD/MIT/Apache (GIF decoder MPL-1.1 elected) / MIT wrapper + LGPL-3.0-or-later native bundle | ImageSharp split-license default |
+| Metadata | MetadataExtractor (parity with ExifTool in the spike); ExifTool only if real files show gaps | Apache-2.0; XmpCore terms under review / Perl terms | Proprietary SDK |
 | Identity | ASP.NET Core OIDC + Keycloak | MIT / Apache-2.0 | Mandatory paid identity server |
 | Load testing | k6 (test-tool exception); Gatling OSS if a permissive tool is required | AGPL-3.0 / Apache-2.0 | NBomber commercial editions |
 | S3-compatible test server | SeaweedFS; MinIO only as test-tool exception | Apache-2.0 / AGPL-3.0 | Production S3 server chosen by default |
@@ -34,7 +34,7 @@ Wolverine (MIT, PostgreSQL transport and durable inbox/outbox) is the next candi
 Verify atomic job intent, lease expiry, retries, idempotency and dead letters. One logical completion is required, not exactly-once delivery.
 
 ## Media decision experiment
-Compare **NetVips** (MIT wrapper, LGPL-2.1+ libvips) and **SkiaSharp** (MIT wrapper, BSD-3 Skia) for the MVP's JPEG/PNG/WebP scope.
+Compare **NetVips** (MIT wrapper; the native package declares LGPL-3.0-or-later) and **SkiaSharp** (MIT wrapper, BSD-3 Skia) for the MVP's JPEG/PNG/WebP scope. **Executed:** both passed; SkiaSharp is recommended for lower memory and permissive licensing ([spike results](spike-results.md#2-rendering-adr-0003-7)).
 
 - **Memory:** both support reduced-size decoding (libvips shrink-on-load, Skia scaled `SKCodec` decoding), which matters for the 512 MiB parser limit. Magick.NET's default Q16 build holds about 8 bytes per pixel, roughly 400 MB for a 50-megapixel image before working copies.
 - **Licensing:** SkiaSharp is the only fully permissive candidate. NetVips needs an LGPL review of libvips and its bundled codecs. Magick.NET's native package also bundles delegate libraries with their own licenses (verify the list for the pinned `Magick.Native` release, e.g. libheif/libde265 and LibRaw).

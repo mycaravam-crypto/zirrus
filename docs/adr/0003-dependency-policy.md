@@ -31,6 +31,7 @@ Several widely used .NET libraries changed to commercial or copyleft terms. Veri
 | FluentAssertions v8+ | noncommercial/community or commercial terms | xUnit assertions or Shouldly |
 | ImageSharp (current split license) | conditional terms | NetVips or SkiaSharp; Magick.NET for extended formats |
 | NBomber v5+ | commercial terms for organizational use | k6 (test-tool exception) or Gatling OSS |
+| XmpCore 6.1.10.1 (MetadataExtractor dependency) | no SPDX expression; Adobe XMP library terms by URL | review the terms before distribution; until then the metadata extractor is not approved ([spike results](../architecture/spike-results.md#3-metadata-7)) |
 
 Check exact versions and license expressions, including dual-license choices. Do not pin obsolete versions simply to avoid a license change.
 

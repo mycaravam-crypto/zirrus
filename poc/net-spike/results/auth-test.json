@@ -1,0 +1,76 @@
+{
+ "test": "auth-test",
+ "checks": [
+  {
+   "check": "anonymous API call is 401, not a redirect",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "check": "editor login completes code + PKCE flow",
+   "pass": true,
+   "detail": "{\"user\": \"editor\", \"roles\": [\"editor\"]}"
+  },
+  {
+   "check": "roles claim mapped from ID token",
+   "pass": true,
+   "detail": "[\"editor\"]"
+  },
+  {
+   "check": "session cookie is HttpOnly and SameSite=Lax",
+   "pass": true,
+   "detail": "zirrus.session=cfdj8a8pwdlyzy9fipifu-4lno3ooirgzqmjpgkdzs2b-nb8-elfcb9md2zfxal3qkt-hxg412ku9ajcctw8vrf1hij0i5y7_gfh4s-t2..."
+  },
+  {
+   "check": "session cookie holds only a session key (server-side ticket)",
+   "pass": true,
+   "detail": "347 chars"
+  },
+  {
+   "check": "unsafe request without CSRF token is rejected",
+   "pass": true,
+   "detail": "400"
+  },
+  {
+   "check": "editor with CSRF token may edit metadata",
+   "pass": true,
+   "detail": "200"
+  },
+  {
+   "check": "viewer may read the asset",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "check": "viewer edit is 403 (policy CanEditCatalog)",
+   "pass": true,
+   "detail": "403"
+  },
+  {
+   "check": "CSRF token from another user's session is rejected",
+   "pass": true,
+   "detail": "400"
+  },
+  {
+   "check": "copied session cookie works before logout",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "check": "logout with CSRF token succeeds",
+   "pass": true,
+   "detail": "204"
+  },
+  {
+   "check": "copied session cookie is rejected after logout",
+   "pass": true,
+   "detail": ""
+  },
+  {
+   "check": "server-side session removed on logout",
+   "pass": true,
+   "detail": "2 -> 1"
+  }
+ ],
+ "pass": true
+}

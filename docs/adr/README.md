@@ -3,10 +3,10 @@
 | ID | Decision | Status |
 |---|---|---|
 | 0001 | [Core application stack](0001-core-stack.md) | accepted |
-| 0002 | [Background job backend](0002-job-backend.md) | proposed |
+| 0002 | [Background job backend](0002-job-backend.md) | accepted |
 | 0003 | [Dependency licensing policy](0003-dependency-policy.md) | proposed |
 | 0004 | [Operating budget and cost model](0004-operating-budget.md) | proposed |
-| 0005 | [Persistence and migrations](0005-persistence.md) | proposed |
+| 0005 | [Persistence and migrations](0005-persistence.md) | accepted |
 | 0006 | [Asset storage and lifecycle](0006-storage.md) | proposed |
 | 0007 | [Identity and tenant isolation](0007-identity-tenancy.md) | proposed |
 | 0008 | [Container runtime and deployment](0008-deployment.md) | proposed |

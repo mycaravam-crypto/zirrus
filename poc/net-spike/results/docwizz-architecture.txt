@@ -1,0 +1,5 @@
+
+Architecture (0 violations, 0 cycles)
+────────────────────────────────────────
+  layers: api 1, application 1, domain 1, infrastructure 7
+  dependencies: infrastructure → application 6, infrastructure → domain 2

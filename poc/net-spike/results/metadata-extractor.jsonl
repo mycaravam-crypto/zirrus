@@ -1,0 +1,3 @@
+{"file":"photo-50mp.jpg","fields":{"title":"Harbor at dawn","creator":"Jane Example","keywords":"harbor;dawn","copyright":"(c) 2026 Example","captureDate":"2026:05:04 06:12:00","gps":"47.37690,8.54170","orientation":"Right side, top (Rotate 90 CW)"},"missing":[],"peakRssMiB":36.9}
+{"file":"graphic.png","fields":{"title":"Diagram","creator":"Design Team","keywords":"diagram;test","copyright":"CC BY 4.0","orientation":"Top, left side (Horizontal / normal)"},"missing":["captureDate","gps"],"peakRssMiB":42.6}
+{"file":"graphic.webp","fields":{"title":"Diagram webp","creator":"Design Team","keywords":"web","copyright":"CC BY 4.0","orientation":"Top, left side (Horizontal / normal)"},"missing":["captureDate","gps"],"peakRssMiB":42.1}

@@ -51,6 +51,8 @@ Scores remain engineering judgments, not benchmarks. Compared with the earlier m
 | .NET 10 LTS support ends 2028-11-14 | Plan the upgrade to the next LTS (expected November 2027) in the roadmap |
 
 ## Validation spike (2–3 days, gates ADRs 0002 and 0005, not ADR 0001)
+Executed 2026-11-26: see [spike results](spike-results.md).
+
 1. **Durable job on PostgreSQL:** kill the worker mid-job 20 times; each job completes once logically; outbox re-dispatch recovers it.
 2. **Thumbnail and metadata** in a non-root, no-network container: NetVips vs. SkiaSharp for rendering, MetadataExtractor vs. ExifTool for field coverage. Pass: peak RSS under 512 MiB on a 50 MP JPEG; JPEG/PNG/WebP and EXIF orientation correct; corrupt, oversize and EICAR samples rejected; deterministic output; native library list recorded.
 3. **OIDC, cookie and antiforgery** against Keycloak: login/logout, CSRF rejection, 401/403 without leaks.

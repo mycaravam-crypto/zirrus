@@ -1,0 +1,27 @@
+[{
+  "SourceFile": "corpus/photo-50mp.jpg",
+  "ObjectName": "Harbor at dawn",
+  "By-line": "Jane Example",
+  "Keywords": ["harbor","dawn"],
+  "CopyrightNotice": "(c) 2026 Example",
+  "DateTimeOriginal": "2026:05:04 06:12:00",
+  "GPSLatitude": 47.3769,
+  "GPSLongitude": 8.5417,
+  "Orientation": 6
+},
+{
+  "SourceFile": "corpus/graphic.png",
+  "Title": "Diagram",
+  "Creator": "Design Team",
+  "Subject": ["diagram","test"],
+  "Rights": "CC BY 4.0",
+  "Orientation": 1
+},
+{
+  "SourceFile": "corpus/graphic.webp",
+  "Title": "Diagram webp",
+  "Creator": "Design Team",
+  "Subject": "web",
+  "Rights": "CC BY 4.0",
+  "Orientation": 1
+}]

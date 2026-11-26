@@ -1,0 +1,19 @@
+Profile: default
+Documentation  ████████████████████ 100%
+Doc quality    ████████████████████ 100%  (8 with written docs)
+
+  default           100%  (1)
+  endpoint          100%  (7)
+
+Critical (0)
+────────────────────────────────────────
+
+Warnings (0)
+────────────────────────────────────────
+
+8 documented, 0 partial, 0 undocumented; 0 of 8 have tests
+
+Architecture (0 violations, 0 cycles)
+────────────────────────────────────────
+  layers: api 1, application 1, domain 1, infrastructure 7
+  dependencies: infrastructure → application 6, infrastructure → domain 2
