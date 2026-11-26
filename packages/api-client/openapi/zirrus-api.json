@@ -1,0 +1,68 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "ZIRRUS API",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/v1/catalogs": {
+      "get": {
+        "tags": [
+          "Catalogs"
+        ],
+        "summary": "List catalogs",
+        "description": "Returns all catalogs ordered by name.",
+        "operationId": "ListCatalogs",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CatalogSummary": {
+        "required": [
+          "id",
+          "name",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Catalog identifier.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "Read model returned by catalog queries."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Catalogs"
+    }
+  ]
+}

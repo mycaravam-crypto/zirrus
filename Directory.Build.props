@@ -1,0 +1,16 @@
+<Project>
+  <!-- Shared build rules (ADR 0011): nullable, recommended analyzers, warnings as errors, XML docs. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- CA2007: no SynchronizationContext in ASP.NET Core. CA1848: LoggerMessage not required for a skeleton. -->
+    <NoWarn>$(NoWarn);CA2007;CA1848</NoWarn>
+  </PropertyGroup>
+</Project>

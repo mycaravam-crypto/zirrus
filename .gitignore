@@ -1,0 +1,11 @@
+bin/
+obj/
+node_modules/
+dist/
+coverage/
+TestResults/
+*.user
+.vs/
+.idea/
+deploy/secrets/
+sbom/

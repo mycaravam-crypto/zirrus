@@ -1,0 +1,22 @@
+{
+  "name": "@zirrus/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed ZIRRUS API client generated from the API's OpenAPI document (ADR 0011).",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "generate": "openapi-typescript openapi/zirrus-api.json -o src/schema.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "echo 'no tests: generated code' && exit 0",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}

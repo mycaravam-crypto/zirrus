@@ -1,0 +1,105 @@
+# ZIRRUS reference deployment (#10, ADR 0008). Production defaults; see compose.dev.yaml and compose.test.yaml.
+# Secrets are files under deploy/secrets/ (create them with deploy/init-secrets.sh; never committed).
+name: zirrus
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  tmpfs: ["/tmp"]
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:18@sha256:64c8b0d31e4ab6ea665e8426ea406a94bf52de3c05b3a4a8bf713704eefa9328
+    environment:
+      POSTGRES_DB: zirrus
+      POSTGRES_USER: zirrus
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes:
+      - pgdata:/var/lib/postgresql
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zirrus -d zirrus"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    shm_size: 256m
+    mem_limit: 1g
+    restart: unless-stopped
+
+  migrate:
+    build: { context: .., dockerfile: deploy/docker/migrate.Dockerfile }
+    image: zirrus-migrate:local
+    <<: *hardening
+    restart: "no"
+    secrets:
+      - source: zirrus_db
+        target: ConnectionStrings__Zirrus
+    networks: [data]
+    depends_on:
+      postgres: { condition: service_healthy }
+    mem_limit: 256m
+
+  api:
+    build: { context: .., dockerfile: deploy/docker/api.Dockerfile }
+    image: zirrus-api:local
+    <<: *hardening
+    secrets:
+      - source: zirrus_db
+        target: ConnectionStrings__Zirrus
+    networks: [backend, data]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    mem_limit: 512m
+    cpus: 2
+
+  worker:
+    build: { context: .., dockerfile: deploy/docker/worker.Dockerfile }
+    image: zirrus-worker:local
+    <<: *hardening
+    secrets:
+      - source: zirrus_db
+        target: ConnectionStrings__Zirrus
+    networks: [data]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    mem_limit: 512m
+    cpus: 2
+
+  web:
+    build: { context: .., dockerfile: deploy/docker/web.Dockerfile }
+    image: zirrus-web:local
+    <<: *hardening
+    environment:
+      ZIRRUS_SITE_ADDRESS: ${ZIRRUS_SITE_ADDRESS:-http://localhost}
+    # Non-root Caddy may bind 80/443 inside its own network namespace only.
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 80
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [frontend, backend]
+    depends_on:
+      api: { condition: service_healthy }
+    mem_limit: 256m
+
+networks:
+  frontend: {}
+  backend: { internal: true }
+  data: { internal: true }
+
+volumes:
+  pgdata: {}
+  caddy_data: {}
+  caddy_config: {}
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  zirrus_db:
+    file: ./secrets/zirrus_db_connection

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <!-- The OpenAPI document is generated at build time and committed; CI checks it is current. -->
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../../packages/api-client/openapi</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name zirrus-api</OpenApiGenerateDocumentsOptions>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Zirrus.Infrastructure\Zirrus.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

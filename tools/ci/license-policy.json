@@ -1,0 +1,12 @@
+{
+  "$comment": "License gate for ADR 0003. 'runtime' covers code shipped in images; 'development' covers build and test tools that are never distributed (test-tool exception rule). Add exceptions only with a reason and reviewer.",
+  "runtime": {
+    "allowed": ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "0BSD", "PostgreSQL", "Zlib"]
+  },
+  "development": {
+    "allowed": ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "0BSD", "PostgreSQL", "Zlib",
+                "CC0-1.0", "BlueOak-1.0.0", "Python-2.0", "CC-BY-4.0", "MPL-2.0"]
+  },
+  "exceptions": [],
+  "nativePackages": []
+}

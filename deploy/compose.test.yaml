@@ -1,0 +1,5 @@
+# CI smoke test (#21): plain HTTP on localhost, small limits.
+services:
+  web:
+    environment:
+      ZIRRUS_SITE_ADDRESS: http://localhost

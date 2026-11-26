@@ -1,0 +1,46 @@
+# Dependency updates (ADR 0011). Every update PR runs the license gate and vulnerability checks.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      nuget:
+        patterns: ["*"]
+    ignore:
+      # Stay on the .NET 10 lines until a runtime-upgrade ADR (11.0 packages target only net11.0).
+      - dependency-name: "Microsoft.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Npgsql*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "dotnet-ef"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      npm:
+        patterns: ["*"]
+    ignore:
+      # typescript-eslint and openapi-typescript support TypeScript < 6.1 (checked 2026-11-26).
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directories: ["/deploy/docker"]
+    schedule: { interval: weekly }
+    groups:
+      images:
+        patterns: ["*"]
+    ignore:
+      # .NET images stay on 10.0 with the runtime.
+      - dependency-name: "dotnet/*"
+        update-types: ["version-update:semver-major"]
