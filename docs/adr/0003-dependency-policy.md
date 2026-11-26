@@ -1,7 +1,10 @@
-# ADR 0003: Dependency licensing and operating budget
-Status: Proposed
-Date: 2026-11-26
-Issue: #2
+---
+status: proposed
+date: 2026-11-26
+issue: https://github.com/mycaravam-crypto/zirrus/issues/2
+---
+
+# ADR 0003: Dependency licensing policy
 
 ## Context
 ZIRRUS is Apache-2.0. Distribution may include container images and native binaries; deployment and commercial service models are not final.
@@ -15,5 +18,7 @@ Permissive-first with documented exceptions. Default candidates: MIT, BSD-2/3-Cl
 ## Controls
 Generate SBOM for pinned runtime and build dependencies, OS packages and container images. Retain notices, license texts and required source/offer materials. Review changes in CI (#11), record exceptions with owner and approval, and obtain qualified legal review for uncertain obligations. See [initial inventory](../architecture/third-party-license-inventory.md).
 
-## Budget
-Prefer open-source self-hostable components without mandatory paid tiers. Compare infrastructure and operational labor using the cost model in the stack evaluation; budget owner, ceiling and distribution model require confirmation. No legal clearance or cost approval is implied.
+## Developer tooling
+Docker Engine on Linux and Compose are preferred candidates. Docker Desktop is optional and subject to its separate [subscription terms](https://docs.docker.com/subscription-billing/desktop-license/); verify organizational eligibility or obtain approved paid seats before use. Podman is an alternative candidate subject to #10 compatibility validation. Do not make Docker Desktop mandatory.
+
+Budget approval is independent; see [ADR 0004](0004-operating-budget.md). No legal clearance is implied.
