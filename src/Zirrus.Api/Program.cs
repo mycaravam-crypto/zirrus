@@ -31,8 +31,8 @@ var v1 = app.MapGroup("/api/v1").WithTags("Catalogs");
 v1.MapGet("/catalogs", async (ListCatalogs listCatalogs, CancellationToken cancellationToken) =>
         TypedResults.Ok(await listCatalogs.ExecuteAsync(cancellationToken)))
     .WithName("ListCatalogs")
-    .WithSummary("List catalogs")
-    .WithDescription("Returns all catalogs ordered by name.");
+    .WithSummary("List the catalogs assets are organized in")
+    .WithDescription("Returns all catalogs ordered by name. Until catalog permissions arrive (W2), every catalog is listed.");
 
 await app.RunAsync();
 return 0;

@@ -10,8 +10,8 @@
         "tags": [
           "Catalogs"
         ],
-        "summary": "List catalogs",
-        "description": "Returns all catalogs ordered by name.",
+        "summary": "List the catalogs assets are organized in",
+        "description": "Returns all catalogs ordered by name. Until catalog permissions arrive (W2), every catalog is listed.",
         "operationId": "ListCatalogs",
         "responses": {
           "200": {

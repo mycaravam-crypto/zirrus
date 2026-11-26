@@ -50,7 +50,9 @@ public static class DependencyInjection
 /// <summary>Design-time factory for <c>dotnet ef</c> (migrations and migration bundles).</summary>
 internal sealed class ZirrusDbContextFactory : IDesignTimeDbContextFactory<ZirrusDbContext>
 {
-    /// <inheritdoc />
+    /// <summary>Creates a context for migrations, using the environment, the mounted secret or a local default.</summary>
+    /// <param name="args">Arguments passed by <c>dotnet ef</c>; not used.</param>
+    /// <returns>A context bound to the resolved connection string.</returns>
     public ZirrusDbContext CreateDbContext(string[] args)
     {
         // Used by `dotnet ef` and by the migration bundle at run time. In containers the connection

@@ -12,8 +12,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List all catalogs
-         * @description Returns all catalogs ordered by name.
+         * List the catalogs assets are organized in
+         * @description Returns all catalogs ordered by name. Until catalog permissions arrive (W2), every catalog is listed.
          */
         get: operations["ListCatalogs"];
         put?: never;

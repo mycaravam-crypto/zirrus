@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-26
 issue: https://github.com/mycaravam-crypto/zirrus/issues/11
 ---
@@ -77,4 +77,4 @@ On release candidates, also run: Playwright E2E with axe-core, ZAP baseline, ima
 - A PR with a deliberate layer violation, a warning, a lockfile drift, a stale generated client and an unapproved license each fails the matching job.
 - Clean-host `docker compose up` works from the committed layout.
 
-Validation and approving review pending.
+Accepted by the product owner on 2026-11-26 (PR #29 merged on their instruction). Implemented in W1 (#21); the counter-examples are recorded in the W1 pull request.
