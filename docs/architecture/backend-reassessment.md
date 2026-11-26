@@ -14,7 +14,7 @@ The product owner first selected TypeScript, Node.js and PostgreSQL, then reques
 | Auth | Passport, openid-client, session store, separate CSRF package | First-party OpenID Connect and cookie handlers, antiforgery |
 | Persistence | Drizzle candidate, SQL migrations | EF Core + Npgsql, migration bundles ([ADR 0005](../adr/0005-persistence.md)) |
 | Jobs | BullMQ, requires Valkey/Redis | .NET worker on a PostgreSQL-backed queue, no broker ([ADR 0002](../adr/0002-job-backend.md)) |
-| Media | Sharp/libvips, ExifTool, ClamAV | NetVips/libvips, ExifTool, ClamAV |
+| Media | Sharp/libvips, ExifTool, ClamAV | Magick.NET / SkiaSharp / NetVips, MetadataExtractor / ExifTool, ClamAV |
 | Contracts | Shared TS types plus runtime validation | TS client generated from the CI-checked OpenAPI document |
 | Tests | Vitest/Supertest/Testcontainers | xUnit, WebApplicationFactory, Testcontainers for .NET |
 | DocWizz gate | Frontend only; no NestJS endpoint detection | Endpoints, authorization, DI and `DbContext` access modeled |
@@ -52,11 +52,11 @@ Scores remain engineering judgments, not benchmarks. Compared with the earlier m
 
 ## Validation spike (2–3 days, gates ADRs 0002 and 0005, not ADR 0001)
 1. **Durable job on PostgreSQL:** kill the worker mid-job 20 times; each job completes once logically; outbox re-dispatch recovers it.
-2. **Thumbnail and metadata** with NetVips and ExifTool in a non-root, no-network container: JPEG/PNG/WebP correct; corrupt, oversize and EICAR samples rejected; deterministic output.
+2. **Thumbnail and metadata** with Magick.NET and MetadataExtractor as preferred candidates, comparing NetVips/ExifTool where coverage or performance requires in a non-root, no-network container: JPEG/PNG/WebP correct; corrupt, oversize and EICAR samples rejected; deterministic output.
 3. **OIDC, cookie and antiforgery** against Keycloak: login/logout, CSRF rejection, 401/403 without leaks.
 4. **DocWizz** on the spike code: endpoints, authorization and `DbContext` flows appear in generated docs.
 
-If 1 fails, add a broker per ADR 0002. If 2 fails, evaluate Magick.NET or a separate libvips CLI step.
+If 1 fails, evaluate the Npgsql lease consumer before adding a broker per ADR 0002. If 2 fails, evaluate the other media candidates; document native licenses and security implications.
 
 ## Support evidence
 .NET 10 LTS support ends 2028-11-14; Node 26 LTS EOL April 2029, according to current upstream schedules.
