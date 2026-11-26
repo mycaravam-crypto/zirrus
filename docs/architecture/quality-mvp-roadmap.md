@@ -6,7 +6,7 @@ Issues #12, #13, #14. All figures proposed, not measured. Confirm product owner 
 
 | ID | Release gate proposal | Method / owner |
 |---|---|---|
-| Q1 | keyword p95 <= 500ms; filter p95 <= 750ms at 10 concurrent users, <1% unexpected errors | k6 representative queries, #6/#12 |
+| Q1 | keyword p95 <= 500ms; filter p95 <= 750ms at 10 concurrent users, <1% unexpected errors | Apache JMeter representative queries, #6/#12 |
 | Q2 | >= 10 valid 5 MiB JPEG assets/min sustained 15 min; no lost assets | ingestion load harness #7 |
 | Q3 | zero unauthorized reads/writes/counts/previews in role matrix | integration + E2E #9 |
 | Q4 | 100% original checksum match after restore; RPO <=24h, RTO <=4h | full-size recovery drill #10 |
@@ -37,4 +37,4 @@ Must: authenticated catalog-scoped roles; managed image import/quarantine/scan, 
 S/M/L relative sizing only; team to estimate. Create native implementation subissues under #14 after #13 approval. Do not imply release date or owner is assigned.
 
 ## Consolidated review questions
-Backend runtime is decided (ASP.NET Core, ADR 0001). Confirm the PostgreSQL job queue (ADR 0002) and EF Core (ADR 0005) after the validation spike; single organization vs tenancy; managed filesystem vs S3 provider; formats/limits; Keycloak or existing OIDC; retention; initial workload and thresholds; budget/owner/date; whether Cumulus migration required. Review all ADRs, resolve or formally defer with safe default and owner. PoCs: database metadata/search, storage round trip, ingestion, queue compatibility, Compose and backup/restore. No architecture approval claimed. Walking skeleton exception stays unchanged.
+Backend runtime is decided (ASP.NET Core, ADR 0001). Confirm the PostgreSQL job queue (ADR 0002), permissive media and dependency candidates (ADR 0003) and EF Core (ADR 0005) after the validation spike; single organization vs tenancy; managed filesystem vs S3 provider; formats/limits; Keycloak or existing OIDC; retention; initial workload and thresholds; budget/owner/date; whether Cumulus migration required. Review all ADRs, resolve or formally defer with safe default and owner. PoCs: database metadata/search, storage round trip, ingestion, queue compatibility, Compose and backup/restore. No architecture approval claimed. Walking skeleton exception stays unchanged.
