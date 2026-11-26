@@ -5,7 +5,7 @@ Issues #7, #8. Proposed.
 1. **Upload:** stream the authenticated upload into quarantine, validate declared size and detected magic bytes, generate an opaque asset ID, calculate SHA-256 and write job intent in the same transaction.
 2. **Scan:** ClamAV, fail-closed. Infected or unsupported files are rejected; an unavailable scanner leaves the asset quarantined for retry.
 3. **Extract:** EXIF/IPTC/XMP after the scan; evaluate MetadataExtractor first, ExifTool fallback for missing fields.
-4. **Render:** evaluate Magick.NET first, SkiaSharp and NetVips as alternatives. The selected renderer creates a JPEG/WebP thumbnail (320 px longest edge) and preview (1600 px), with no upscaling.
+4. **Render:** NetVips or SkiaSharp, chosen in the spike (Magick.NET only for later extended formats); both support reduced-size decoding within the parser memory limit. The selected renderer creates a JPEG/WebP thumbnail (320 px longest edge) and preview (1600 px), with no upscaling.
 
 Initial formats are JPEG, PNG and WebP. Proposed limits: 100 MiB per file and 50 megapixels decoded. Malformed and unsupported files are rejected and the original is preserved.
 

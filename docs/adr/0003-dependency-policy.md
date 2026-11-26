@@ -29,14 +29,18 @@ Several widely used .NET libraries changed to commercial or copyleft terms. Veri
 | MassTransit v9+ | commercial license | Wolverine, Rebus or in-house outbox consumer |
 | MediatR, AutoMapper (recent versions) | commercial license | plain application services; Mapperly or hand-written mapping |
 | FluentAssertions v8+ | noncommercial/community or commercial terms | xUnit assertions or Shouldly |
-| ImageSharp (current split license) | conditional terms | Magick.NET, SkiaSharp, or reviewed NetVips |
-| NBomber v5+ | commercial terms for organizational use | Apache JMeter |
+| ImageSharp (current split license) | conditional terms | NetVips or SkiaSharp; Magick.NET for extended formats |
+| NBomber v5+ | commercial terms for organizational use | k6 (test-tool exception) or Gatling OSS |
 
 Check exact versions and license expressions, including dual-license choices. Do not pin obsolete versions simply to avoid a license change.
+
+## Test-tool exceptions
+Copyleft tools used unmodified, only in CI or test environments, and never distributed with ZIRRUS may be approved as recorded test-tool exceptions (scope, version, reviewer). Current candidates: k6 for load tests and MinIO as an S3-compatible test server (SeaweedFS preferred). A tool that moves into a shipped image or production deployment loses the exception. Details: [open-source evaluation](../architecture/open-source-dependencies.md#test-tool-exceptions).
 
 ## Controls
 - Generate an SBOM for pinned runtime and build dependencies (NuGet, npm), OS packages and container images.
 - Use NuGet lock files and central package versions; review license changes on every dependency update in CI (#11).
+- Native NuGet packages must list their bundled native libraries in the SBOM; CI fails when a native package lacks that list.
 - Retain notices, license texts and required source/offer materials.
 - Record exceptions with owner and approval; obtain qualified legal review for uncertain obligations.
 

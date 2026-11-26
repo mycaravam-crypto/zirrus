@@ -26,8 +26,8 @@ Retained for traceability only. It compared backend languages before .NET was co
 | API | ASP.NET Core minimal APIs/controllers, built-in OpenAPI | Decided (ADR 0001) |
 | Auth | ASP.NET Core OpenID Connect + cookie handlers, antiforgery, policy authorization | Adopt; provider decision #9 (Keycloak candidate) |
 | Data | PostgreSQL 18; EF Core + Npgsql, migration bundles | Proposed ADR 0005; validate in #4 PoC |
-| Jobs | .NET worker, Wolverine PostgreSQL transport candidate, Npgsql fallback; no broker | Proposed ADR 0002; validate in spike |
-| Media | Magick.NET / SkiaSharp / NetVips; MetadataExtractor / ExifTool; ClamAV | Prefer permissive candidates; validate format coverage, native SBOM, isolation and performance |
+| Jobs | .NET worker, in-house Npgsql consumer behind `IJobQueue`; Wolverine if needs grow; no broker | Proposed ADR 0002; validate in spike |
+| Media | NetVips or SkiaSharp (Magick.NET for extended formats); MetadataExtractor / ExifTool; ClamAV | Prefer permissive candidates; validate format coverage, native SBOM, isolation and performance |
 | Frontend | React, Vite, TypeScript, Tailwind, shadcn/ui; Node.js 24/26 LTS as build tooling only | Adopt provisionally |
 | UI data | TanStack Query/Table; TS client generated from OpenAPI | Adopt provisionally |
 | Search | PostgreSQL FTS, pg_trgm | Adopt provisionally; benchmark #6; defer OpenSearch |
@@ -37,7 +37,7 @@ Retained for traceability only. It compared backend languages before .NET was co
 | Deployment | Linux containers, Compose, Caddy | Validate #10 |
 | Tooling | dotnet SDK with analyzers and central package versions; pnpm, ESLint and strict TypeScript for web; GitHub Actions; DocWizz | Detail #11 |
 | Observability | OpenTelemetry .NET and browser SDKs | Detail #10 |
-| QA | xUnit, WebApplicationFactory, Testcontainers for .NET; Vitest and Testing Library for web; Playwright, Apache JMeter, axe-core, ZAP, Trivy, CycloneDX, Dependabot | Validate integration and license inventory #11/#12 |
+| QA | xUnit, WebApplicationFactory, Testcontainers for .NET; Vitest and Testing Library for web; Playwright, k6 (test-tool exception), axe-core, ZAP, Trivy, CycloneDX, Dependabot | Validate integration and license inventory #11/#12 |
 
 ## Support and validation
 - **.NET 10 LTS:** support ends 2028-11-14. Plan the move to the next LTS (expected November 2027).

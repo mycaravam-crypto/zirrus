@@ -6,7 +6,7 @@ Issues #12, #13, #14. All figures proposed, not measured. Confirm product owner 
 
 | ID | Release gate proposal | Method / owner |
 |---|---|---|
-| Q1 | keyword p95 <= 500ms; filter p95 <= 750ms at 10 concurrent users, <1% unexpected errors | Apache JMeter representative queries, #6/#12 |
+| Q1 | keyword p95 <= 500ms; filter p95 <= 750ms at 10 concurrent users, <1% unexpected errors | k6 representative queries (test-tool exception, ADR 0003), #6/#12 |
 | Q2 | >= 10 valid 5 MiB JPEG assets/min sustained 15 min; no lost assets | ingestion load harness #7 |
 | Q3 | zero unauthorized reads/writes/counts/previews in role matrix | integration + E2E #9 |
 | Q4 | 100% original checksum match after restore; RPO <=24h, RTO <=4h | full-size recovery drill #10 |

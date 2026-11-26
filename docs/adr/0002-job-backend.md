@@ -15,7 +15,13 @@ DAM ingestion must tolerate retries and process restarts. The backend is .NET (A
 - **Hangfire with a PostgreSQL provider:** mature, but core is LGPL-3.0 with paid Pro features. Exception review under ADR 0003.
 
 ## Proposed decision
-Use a PostgreSQL-backed queue consumed by the .NET worker, with **no separate broker in the MVP**. Evaluate Wolverine PostgreSQL transport first (MIT upstream; exact package and transitive license review required), with a small Npgsql lease-based consumer as fallback. Rebus remains a candidate. See [open-source evaluation](../architecture/open-source-dependencies.md#queue-decision-experiment). The spike selects the implementation; no library is accepted yet. Add a broker only if measured contention or throughput (#12, Q2) requires it.
+Use a PostgreSQL-backed queue consumed by the .NET worker, with **no separate broker in the MVP**.
+
+- **Implementation:** a small in-house Npgsql consumer (`FOR UPDATE SKIP LOCKED`, leases, backoff, dead-letter state) behind an `IJobQueue` port, so a library can replace it locally later.
+- **Next candidate:** Wolverine PostgreSQL transport (MIT; exact package and transitive license review required), adopted only if scheduled jobs, sagas or many message types are needed. Rebus remains an alternative.
+- **Broker:** only if measured contention or throughput (#12, Q2) requires it.
+
+See the [open-source evaluation](../architecture/open-source-dependencies.md#queue-decision-experiment). The spike validates the consumer; nothing is accepted yet.
 
 ## Consequences and validation
 - One fewer stateful service to run, secure, back up and license-review.

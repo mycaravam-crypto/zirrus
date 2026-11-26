@@ -5,14 +5,19 @@ Status: preliminary, not a release SBOM. Verify exact package versions, transiti
 |---|---|---|
 | .NET SDK/runtime, ASP.NET Core, EF Core | MIT | Notices; verify bundled third-party components |
 | Npgsql, Npgsql EF Core provider | PostgreSQL License | Verify selected packages |
-| NetVips / libvips | MIT / LGPL-2.1-or-later (verify native package) | Review native linkage and bundled codecs |
+| NetVips / libvips | MIT / LGPL-2.1-or-later (verify native package) | Rendering candidate (spike vs. SkiaSharp); review native linkage and bundled codecs |
+| SkiaSharp / Skia | MIT / BSD-3-Clause (verify native assets) | Rendering candidate (spike vs. NetVips); fully permissive |
+| Magick.NET / ImageMagick | Apache-2.0 wrapper / ImageMagick License; bundled delegates vary (e.g. libheif, LibRaw; verify) | Only for extended formats (TIFF/HEIC/RAW); Q8 build and coder allowlist |
 | xUnit, Testcontainers for .NET | Apache-2.0; MIT respectively (verify) | Test-only; verify versions |
-| Wolverine, Rebus (queue candidates) | MIT (verify exact packages) | Wolverine first spike; Npgsql consumer fallback |
+| Wolverine, Rebus (queue candidates) | MIT (verify exact packages) | Not used initially; in-house Npgsql consumer behind `IJobQueue` (ADR 0002) |
 | Mapperly / FluentValidation | Apache-2.0 | Optional; prefer direct mapping and built-in validation |
 | Shouldly / NSubstitute | BSD-3-Clause (verify) | Optional test-only |
-| Magick.NET / SkiaSharp | Apache-2.0 / MIT (wrapper; verify native bundles) | Rendering candidates; compare with NetVips |
-| MetadataExtractor | Apache-2.0 (verify) | Metadata candidate; compare with ExifTool |
-| Apache JMeter | Apache-2.0 | Preferred load-test tool; verify plugins |
+| MetadataExtractor / XmpCore | Apache-2.0 / BSD-3-Clause (verify) | Metadata candidate; ExifTool fallback for missing fields |
+| AWS SDK for .NET (S3 client) | Apache-2.0 | S3 adapter client |
+| SeaweedFS | Apache-2.0 (verify) | Preferred S3-compatible test server |
+| MinIO | AGPL-3.0 (verify current distribution terms) | Test-tool exception only, never production by default |
+| k6 | AGPL-3.0 | Load tests (Q1) as test-tool exception: unmodified, CI-only, not distributed |
+| Gatling (open-source edition) | Apache-2.0 | Alternative if a permissive load-test tool is required |
 | ImageSharp / NBomber v5+ | conditional split license / commercial terms (verify) | Avoid by default |
 | Hangfire, MassTransit v9+, MediatR, AutoMapper, FluentAssertions v8+ | LGPL-3.0 or commercial (verify current terms) | Avoid; see ADR 0003 review list |
 | TypeScript, Node.js (frontend build only) | Apache-2.0; MIT respectively | Notices for shipped bundles only |
@@ -30,7 +35,7 @@ Status: preliminary, not a release SBOM. Verify exact package versions, transiti
 | pnpm | MIT | Verify selected version |
 | OpenTelemetry (.NET, JS) | Apache-2.0 | Verify exporters |
 | OpenSearch (deferred) | Apache-2.0 | Verify plugins |
-| Vitest, Testing Library, Playwright, k6, axe-core, ZAP, Trivy, CycloneDX | Mixed; exact packages TBD | Inventory build/test tooling before adoption; prefer JMeter; k6 only by reviewed test-tool exception |
+| Vitest, Testing Library, Playwright, axe-core, ZAP, Trivy, CycloneDX | Mixed; exact packages TBD | Inventory build/test tooling before adoption |
 | DocWizz | Apache-2.0 | CI-only tool, not distributed |
 | GitHub Actions / Dependabot | Service terms and individual action licenses | Pin and review actions |
 

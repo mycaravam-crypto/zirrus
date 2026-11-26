@@ -4,7 +4,7 @@ Issues #10, #11. Proposed reference deployment.
 ## Runtime
 Docker Engine + Compose v2 on Linux, with Caddy as the only ingress (80/443) and private application/data networks.
 
-- **Services:** web, api, worker, postgres, clamav, caddy, Keycloak candidate, plus a one-off migration container. No queue broker ([ADR 0002](../adr/0002-job-backend.md)). An optional S3-compatible service runs in the test profile.
+- **Services:** web, api, worker, postgres, clamav, caddy, Keycloak candidate, plus a one-off migration container. No queue broker ([ADR 0002](../adr/0002-job-backend.md)). An optional S3-compatible service (SeaweedFS preferred, [ADR 0006](../adr/0006-storage.md)) runs in the test profile.
 - **Persistent data:** PostgreSQL (including the job queue), the asset store volume (originals, quarantine, renditions), ClamAV signatures, identity data and Caddy certificates. Document volume ownership and backup coverage.
 - **Profiles:** dev/test/prod; no default credentials in production.
 - **Images:** pin supported versions/digests after the dependency check; multi-stage builds on minimal .NET and Node base images; non-root where supported.

@@ -20,7 +20,8 @@ Prefer managed filesystem through a storage port. Use opaque keys, quarantine, c
 ## Consequences
 - Lower operational burden; filesystem capacity and backup become explicit constraints.
 - Database and filesystem writes cannot share an ACID transaction; reconcile incomplete operations and deny access until active.
-- Avoid mandating a particular S3 server; evaluate provider and version license before adoption.
+- Do not mandate a particular S3 server for production; evaluate provider and version license before adoption.
+- The test profile uses SeaweedFS (Apache-2.0) for S3-compatible round trips; MinIO (AGPL-3.0) only as a recorded test-tool exception (ADR 0003). The adapter client uses the AWS SDK for .NET (Apache-2.0).
 
 ## Acceptance evidence
 Round-trip filesystem and S3-compatible test with checksums, ranges, interrupted writes, retries and recovery. Verify missing/orphan handling, catalog-scoped duplicate behavior and deletion denial. See [storage design](../architecture/data-storage-search.md#storage).
