@@ -3,7 +3,7 @@
 
 Runs on the CI runner against `docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml`.
 Requires "127.0.0.1 keycloak" in /etc/hosts so the browser and the API use the same issuer URL.
-Test-only users and passwords come from deploy/keycloak/zirrus-test-realm.json.
+Test-only users and passwords come from deploy/keycloak/zirrus-realm.json.
 """
 import html
 import json

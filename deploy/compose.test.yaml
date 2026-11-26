@@ -1,5 +1,5 @@
 # CI end-to-end test (#21, #22, #19): plain HTTP on localhost, Keycloak test realm.
-# Test-only credentials live in deploy/keycloak/zirrus-test-realm.json and here; never reuse them.
+# Test-only credentials live in deploy/keycloak/zirrus-realm.json and here; never reuse them.
 # The CI runner maps "keycloak" to 127.0.0.1 so browser and API share one issuer URL.
 services:
   keycloak:
@@ -10,7 +10,7 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: ci-admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ci-test-only-keycloak-admin
     volumes:
-      - ./keycloak/zirrus-test-realm.json:/opt/keycloak/data/import/zirrus-test-realm.json:ro
+      - ./keycloak/zirrus-realm.json:/opt/keycloak/data/import/zirrus-realm.json:ro
     ports:
       - "8180:8180"
     networks: [frontend, backend]
