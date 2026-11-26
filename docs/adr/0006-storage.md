@@ -6,8 +6,23 @@ issue: https://github.com/mycaravam-crypto/zirrus/issues/5
 
 # ADR 0006: Asset storage and lifecycle
 
-## Context and proposed decision
-Compare managed filesystem, managed S3 and referenced NAS. Prefer managed filesystem for initial single-host deployment with opaque keys and private storage adapter; test S3-compatible round trip as portability evidence. Defer NAS reference mode and versions unless #13 requires them. Soft delete and 30-day purge proposed subject to retention review.
+## Context and decision drivers
+Single-host MVP needs private, recoverable original storage without forcing a proprietary object service.
 
-## Consequences and acceptance
-See the [consolidated architecture documents](../architecture/quality-mvp-roadmap.md) and the owning issue for test evidence, alternatives and residual risks. Review with affected issue owners; no approval or executed PoC is implied.
+## Considered options
+- Managed filesystem: few dependencies, atomic rename on one filesystem, straightforward backup; host locality limits scale.
+- S3-compatible storage: independent scaling and portability; extra service, consistency and license review.
+- Referenced NAS: avoids copying legacy originals but introduces external permissions, availability and reconciliation complexity.
+
+## Proposed decision
+Prefer managed filesystem through a storage port. Use opaque keys, quarantine, checksums and authorized streaming. Keep S3 adapter boundary; defer NAS references and binary versions unless #13 requires them. Proposed 30-day purge subject to retention approval.
+
+## Consequences
+- Lower operational burden; filesystem capacity and backup become explicit constraints.
+- Database and filesystem writes cannot share an ACID transaction; reconcile incomplete operations and deny access until active.
+- Avoid mandating a particular S3 server; evaluate provider and version license before adoption.
+
+## Acceptance evidence
+Round-trip filesystem and S3-compatible test with checksums, ranges, interrupted writes, retries and recovery. Verify missing/orphan handling, catalog-scoped duplicate behavior and deletion denial. See [storage design](../architecture/data-storage-search.md#storage).
+
+Validation and approving review pending; no executed PoC implied.
