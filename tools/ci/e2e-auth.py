@@ -78,16 +78,19 @@ visible = erin.get(f"{SITE}/api/v1/catalogs").json()
 check("editor sees the granted catalog", [(c["id"], c["access"]) for c in visible] == [(catalog_id, "editor")], visible)
 check("editor cannot create catalogs", api(erin, "POST", "/api/v1/catalogs", {"name": "y"}).status_code == 403)
 
-session_cookie = erin.cookies.get("zirrus.session", domain="localhost")
-copy = browser()
-copy.cookies.set("zirrus.session", session_cookie, domain="localhost", path="/")
-check("copied session cookie works before logout", copy.get(f"{SITE}/api/v1/me").status_code == 200)
+# requests files cookies of a dotless host under "localhost.local", so look the cookie up by name
+# and replay it in an explicit header from a fresh client (a stolen-cookie scenario).
+session_cookie = next((c.value for c in erin.cookies if c.name == "zirrus.session"), "")
+check("browser holds a session cookie", len(session_cookie) > 0)
+copy = requests.Session()
+copied = {"Cookie": f"zirrus.session={session_cookie}"}
+check("copied session cookie works before logout", copy.get(f"{SITE}/api/v1/me", headers=copied).status_code == 200)
 
 token = csrf(erin)
 logout = erin.post(f"{SITE}/logout", data={token["formFieldName"]: token["token"]})
 check("logout completes RP-initiated logout and returns to the site", logout.url.rstrip("/") == SITE,
       " -> ".join([h.headers.get("location", "")[:60] for h in logout.history]))
-check("copied session cookie is rejected after logout", copy.get(f"{SITE}/api/v1/me").status_code == 401)
+check("copied session cookie is rejected after logout", copy.get(f"{SITE}/api/v1/me", headers=copied).status_code == 401)
 again = erin.get(f"{SITE}/login?returnUrl=/")
 check("Keycloak session ended: login asks for credentials again (#19)", keycloak_login_form(again) is not None, again.url)
 
