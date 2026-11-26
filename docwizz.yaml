@@ -1,0 +1,23 @@
+# DocWizz configuration for ZIRRUS (https://github.com/mycaravam-crypto/docwizz).
+# The repository currently holds design documentation only (epic #1). DocWizz gates authored Markdown for
+# concision now and documentation coverage and architecture rules once code lands (#11, #14).
+# Unknown keys or invalid values stop docwizz, so this file is validated on every run.
+profile: default
+check:
+  # Documentation coverage and architecture gates. They have nothing to measure until apps/ and packages/ exist.
+  min_coverage: 80
+  max_critical: 0
+  max_violations: 0
+  max_cycles: 0
+  fail_on: low
+  # Authored Markdown under docs/: reject oversized documents (DOC-001) and walls of text (DOC-002).
+  doc_concision: true
+  max_document_words: 2500
+  max_paragraph_words: 120
+# Architecture layers are left at the defaults until the module boundaries from #3 are accepted;
+# they are then mapped to apps/web, apps/api, apps/worker and packages/*.
+security:
+  enabled: false
+tests: ["tests/*", "test/*", "*/__tests__/*", "*.test.ts", "*.spec.ts", "*/e2e/*"]
+# Throwaway proofs of concept (#1 conventions) are not held to documentation standards.
+exclude: ["poc/*"]
