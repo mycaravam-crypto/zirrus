@@ -18,7 +18,9 @@ Reference host proposal: 4 vCPU, 16 GiB RAM, 1 TB usable asset storage plus sepa
 Proposed RPO 24h, RTO 4h on reference dataset. Quiesce asset writes/workers or establish consistent backup checkpoint; snapshot DB and asset originals, manifest of IDs/checksums, IdP/config/secrets via secure backup, encrypt and store off-host with retention and restore access control. Restore isolated instance, replay/reconcile pending jobs, verify counts, authorization, original hashes and previews; log duration and data-loss window. Rebuild renditions when needed. Preflight upgrades with schema compatibility, verified backup checkpoint, one-off migration container; roll back image only if schema compatible, otherwise forward fix or tested restore with explicit data-loss approval. Run failed migration/recovery drill. No restore or Compose PoC performed.
 
 ## Repo layout
-- `Zirrus.sln` with `src/Zirrus.Domain`, `src/Zirrus.Application`, `src/Zirrus.Infrastructure`, `src/Zirrus.Api`, `src/Zirrus.Worker`, and `tests/Zirrus.*.Tests`. The names match DocWizz's default C# layer rules.
+Decision and details: [ADR 0011](../adr/0011-repository-ci.md).
+
+- `Zirrus.slnx` with `src/Zirrus.Domain`, `src/Zirrus.Application`, `src/Zirrus.Infrastructure`, `src/Zirrus.Api`, `src/Zirrus.Worker`, and `tests/Zirrus.*.Tests`. The names match DocWizz's default C# layer rules.
 - `Directory.Build.props` (nullable, analyzers, warnings as errors) and `Directory.Packages.props` (central versions); NuGet lock files; `global.json` pins the SDK.
 - `apps/web`: pnpm workspace for the React SPA and the generated API client (`packages/api-client`); `packages/ui`.
 - `docs/architecture`, `docs/adr`, `docs/diagrams`, `tests/e2e`, `poc/`.
