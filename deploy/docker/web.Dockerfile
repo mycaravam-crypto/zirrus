@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Caddy image serving the React SPA and proxying /api to the API (only public entry point, #10).
 # Node and Caddy are pinned to exact versions; digest pinning follows in W8 (#28).
-FROM node:22.23.5-bookworm-slim AS build
+FROM node:26.13.0-bookworm-slim AS build
 WORKDIR /src
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
