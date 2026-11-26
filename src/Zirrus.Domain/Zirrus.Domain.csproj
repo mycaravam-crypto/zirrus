@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Domain: no framework or persistence references (ADR 0005, system-architecture.md). -->
+</Project>

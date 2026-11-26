@@ -1,0 +1,36 @@
+# Caddy: the only public entry point (#10). It runs as a non-root user with all capabilities dropped;
+# Compose lowers net.ipv4.ip_unprivileged_port_start for this container so it can bind 80/443.
+{
+	admin off
+}
+
+# Public site. ZIRRUS_SITE_ADDRESS is a domain in production (automatic HTTPS) or http://localhost in tests.
+{$ZIRRUS_SITE_ADDRESS:http://localhost} {
+	encode zstd gzip
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+	}
+
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	# API documents and service health stay on the private network.
+	handle /openapi/* {
+		respond 404
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# Container health check only; not published.
+:8081 {
+	respond /healthz 200
+}

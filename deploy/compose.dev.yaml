@@ -1,0 +1,10 @@
+# Local development: publishes PostgreSQL on localhost:5432 for `dotnet run` and integration tests.
+# Usage: docker compose -f deploy/compose.yaml -f deploy/compose.dev.yaml up -d postgres migrate
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks: [data, devhost]
+
+networks:
+  devhost: {}

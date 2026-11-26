@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Zirrus.Domain\Zirrus.Domain.csproj" />
+  </ItemGroup>
+</Project>

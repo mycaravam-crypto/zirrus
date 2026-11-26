@@ -1,0 +1,17 @@
+{
+  "name": "zirrus",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": { "node": ">=22.12" },
+  "scripts": {
+    "generate": "pnpm --filter @zirrus/api-client generate",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build"
+  },
+  "//": "TypeScript stays on 5.x: typescript-eslint supports <6.1 and openapi-typescript ^5.x (checked 2026-11-26).",
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

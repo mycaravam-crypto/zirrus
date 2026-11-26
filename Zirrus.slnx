@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Zirrus.Api/Zirrus.Api.csproj" />
+    <Project Path="src/Zirrus.Application/Zirrus.Application.csproj" />
+    <Project Path="src/Zirrus.Domain/Zirrus.Domain.csproj" />
+    <Project Path="src/Zirrus.Infrastructure/Zirrus.Infrastructure.csproj" />
+    <Project Path="src/Zirrus.Worker/Zirrus.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Zirrus.Api.Tests/Zirrus.Api.Tests.csproj" />
+    <Project Path="tests/Zirrus.Domain.Tests/Zirrus.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

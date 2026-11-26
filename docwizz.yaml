@@ -14,8 +14,25 @@ check:
   doc_concision: true
   max_document_words: 2500
   max_paragraph_words: 120
-# Architecture layers are left at the defaults until the module boundaries from #3 are accepted;
-# they are then mapped to apps/web, apps/api, apps/worker and packages/*.
+# Layers follow ADR 0011 (src/Zirrus.<Layer>). A docwizz.yaml without this section applies no layers,
+# so the rules are explicit. First match wins; files without a layer are not checked.
+architecture:
+  layers:
+    api: ["*.Api/*.cs"]
+    host: ["*.Worker/*.cs"]
+    application: ["*.Application/*.cs"]
+    domain: ["*.Domain/*.cs"]
+    infrastructure: ["*.Infrastructure/*.cs"]
+    ui: ["apps/web/*.tsx"]
+    client: ["packages/api-client/*.ts"]
+  allow:
+    api: [application, domain, infrastructure]
+    host: [application, domain, infrastructure]
+    application: [domain]
+    domain: []
+    infrastructure: [application, domain]
+    ui: [client]
+    client: [http]
 security:
   enabled: false
 tests: ["tests/*", "test/*", "*/__tests__/*", "*.test.ts", "*.spec.ts", "*/e2e/*"]
