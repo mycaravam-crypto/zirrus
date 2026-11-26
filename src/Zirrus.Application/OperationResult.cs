@@ -17,6 +17,9 @@ public enum OperationStatus
 
     /// <summary>The input is invalid (400).</summary>
     Invalid,
+
+    /// <summary>The caller's revision is stale (412, from If-Match).</summary>
+    PreconditionFailed,
 }
 
 /// <summary>Result of a use case: a status, an optional value and an optional error message.</summary>

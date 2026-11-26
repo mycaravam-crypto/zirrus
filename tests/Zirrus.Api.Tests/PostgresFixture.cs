@@ -29,6 +29,7 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     private const string Image = "postgres:18";
     private readonly List<IAsyncDisposable> _hosts = [];
+    private readonly List<string> _extraDatabases = [];
     private PostgreSqlContainer? _container;
     private string? _adminConnectionString;
     private string? _databaseName;
@@ -50,6 +51,7 @@ public sealed class PostgresFixture : IAsyncLifetime
             _container = new PostgreSqlBuilder(Image).Build();
             await _container.StartAsync();
             ConnectionString = _container.GetConnectionString();
+            _adminConnectionString = ConnectionString;
         }
         else
         {
@@ -72,13 +74,32 @@ public sealed class PostgresFixture : IAsyncLifetime
         Api = CreateApi(headerAuthentication: true);
     }
 
+    /// <summary>Blob store root shared by this fixture's API hosts.</summary>
+    public string BlobRoot { get; } = Path.Combine(Path.GetTempPath(), $"zirrus-test-blobs-{Guid.NewGuid():N}");
+
+    /// <summary>Creates an extra, empty database on the same server (dropped with the server or never reused).</summary>
+    /// <returns>Its connection string.</returns>
+    public async Task<string> CreateEmptyDatabaseAsync()
+    {
+        var name = $"zirrus_test_{Guid.NewGuid():N}";
+        await using var admin = new NpgsqlConnection(_adminConnectionString);
+        await admin.OpenAsync();
+        await using (var create = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", admin))
+        {
+            await create.ExecuteNonQueryAsync();
+        }
+
+        _extraDatabases.Add(name);
+        return new NpgsqlConnectionStringBuilder(_adminConnectionString) { Database = name }.ConnectionString;
+    }
+
     /// <summary>Creates an API host on the test database. Hosts share the database and key-ring key.</summary>
     /// <param name="headerAuthentication">Authenticate with <c>X-Test-User</c> instead of the session cookie.</param>
     /// <param name="dataProtectionKey">Key-ring key; null uses the fixture key, empty omits it.</param>
     /// <returns>The host; disposed with the fixture.</returns>
     public ApiFactory CreateApi(bool headerAuthentication, string? dataProtectionKey = null)
     {
-        var factory = new ApiFactory(ConnectionString, dataProtectionKey ?? DataProtectionKey, headerAuthentication);
+        var factory = new ApiFactory(ConnectionString, dataProtectionKey ?? DataProtectionKey, headerAuthentication, BlobRoot);
         _hosts.Add(factory);
         return factory;
     }
@@ -95,6 +116,11 @@ public sealed class PostgresFixture : IAsyncLifetime
             await host.DisposeAsync();
         }
 
+        if (Directory.Exists(BlobRoot))
+        {
+            Directory.Delete(BlobRoot, recursive: true);
+        }
+
         if (_container is not null)
         {
             await _container.DisposeAsync();
@@ -104,8 +130,11 @@ public sealed class PostgresFixture : IAsyncLifetime
             NpgsqlConnection.ClearAllPools();
             await using var admin = new NpgsqlConnection(_adminConnectionString);
             await admin.OpenAsync();
-            await using var drop = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{_databaseName}\" WITH (FORCE)", admin);
-            await drop.ExecuteNonQueryAsync();
+            foreach (var name in _extraDatabases.Append(_databaseName))
+            {
+                await using var drop = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{name}\" WITH (FORCE)", admin);
+                await drop.ExecuteNonQueryAsync();
+            }
         }
     }
 }
@@ -116,7 +145,8 @@ public sealed class PostgresFixture : IAsyncLifetime
 /// <param name="connectionString">Test database.</param>
 /// <param name="dataProtectionKey">Key-ring key; empty to omit it.</param>
 /// <param name="headerAuthentication">Use <see cref="HeaderAuthenticationHandler"/> instead of the session cookie.</param>
-public sealed class ApiFactory(string connectionString, string dataProtectionKey, bool headerAuthentication) : WebApplicationFactory<Program>
+/// <param name="blobRoot">Filesystem blob store root.</param>
+public sealed class ApiFactory(string connectionString, string dataProtectionKey, bool headerAuthentication, string blobRoot) : WebApplicationFactory<Program>
 {
     /// <summary>Path of the test-only sign-in endpoint that issues a real session cookie.</summary>
     public const string SignInPath = "/test/sign-in";
@@ -141,6 +171,7 @@ public sealed class ApiFactory(string connectionString, string dataProtectionKey
         ArgumentNullException.ThrowIfNull(builder);
         builder.UseEnvironment("Production");
         builder.UseSetting("ConnectionStrings:Zirrus", connectionString);
+        builder.UseSetting("Storage:Root", blobRoot);
         if (dataProtectionKey.Length > 0)
         {
             builder.UseSetting("DataProtection:Key", dataProtectionKey);

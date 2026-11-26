@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-26
 issue: https://github.com/mycaravam-crypto/zirrus/issues/5
 ---
@@ -14,7 +14,7 @@ Single-host MVP needs private, recoverable original storage without forcing a pr
 - S3-compatible storage: independent scaling and portability; extra service, consistency and license review.
 - Referenced NAS: avoids copying legacy originals but introduces external permissions, availability and reconciliation complexity.
 
-## Proposed decision
+## Decision outcome
 Prefer managed filesystem through a storage port. Use opaque keys, quarantine, checksums and authorized streaming. Keep S3 adapter boundary; defer NAS references and binary versions unless #13 requires them. Proposed 30-day purge subject to retention approval.
 
 ## Consequences
@@ -26,4 +26,6 @@ Prefer managed filesystem through a storage port. Use opaque keys, quarantine, c
 ## Acceptance evidence
 Round-trip filesystem and S3-compatible test with checksums, ranges, interrupted writes, retries and recovery. Verify missing/orphan handling, catalog-scoped duplicate behavior and deletion denial. See [storage design](../architecture/data-storage-search.md#storage).
 
-Validation and approving review pending; no executed PoC implied.
+**W3 evidence (#23):** one contract suite runs against both adapters, the filesystem store and the S3 store on SeaweedFS 4.53. It covers SHA-256 round trips, range reads (including unsatisfiable ranges), interrupted and cancelled writes that leave no blob or temporary file, retries, idempotent re-puts, conflicting content, checksum mismatches and idempotent deletes. Report-only reconciliation finds missing blobs, size mismatches, orphan temporary writes, stale transitions and expired leases against PostgreSQL. Viewers see only active assets, and assets being deleted are hidden from everyone.
+
+Still open: duplicate reporting within a catalog arrives with upload in W4 (#24), and the purge after 30 days is subject to the retention decision (W7, #27). Accepted on this evidence; it takes effect when merged with an approving review.

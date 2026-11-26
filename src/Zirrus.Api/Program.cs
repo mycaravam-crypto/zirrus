@@ -37,6 +37,7 @@ var api = app.MapGroup("/api/v1")
     .AddEndpointFilter(AuthenticationSetup.ValidateAntiforgery);
 app.MapAccountEndpoints(api);
 api.MapCatalogEndpoints();
+api.MapAssetEndpoints();
 
 await app.RunAsync();
 return 0;

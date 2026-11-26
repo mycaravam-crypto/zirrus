@@ -54,6 +54,8 @@ services:
         target: ConnectionStrings__Zirrus
       - source: dataprotection_key
         target: DataProtection__Key
+    volumes:
+      - blobs:/var/lib/zirrus/blobs
     networks: [backend, data]
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -67,6 +69,8 @@ services:
     secrets:
       - source: zirrus_db
         target: ConnectionStrings__Zirrus
+    volumes:
+      - blobs:/var/lib/zirrus/blobs
     networks: [data]
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -100,6 +104,8 @@ networks:
 
 volumes:
   pgdata: {}
+  # Originals and renditions (managed filesystem store, ADR 0006); back up together with pgdata.
+  blobs: {}
   caddy_data: {}
   caddy_config: {}
 

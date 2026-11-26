@@ -2,6 +2,15 @@
   "version": 2,
   "dependencies": {
     "net10.0": {
+      "AWSSDK.S3": {
+        "type": "Direct",
+        "requested": "[4.1.2.1, )",
+        "resolved": "4.1.2.1",
+        "contentHash": "5NYXkjBc8uQz5RFtpubw6NcjFahIiVTIq4rucZv6y8q9QSaO33PWsJHnkxrtmXRCXft0Fke1gnv6gvMP5wR1nw==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.1.1.1, 5.0.0)"
+        }
+      },
       "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore": {
         "type": "Direct",
         "requested": "[10.0.15, )",
@@ -47,6 +56,20 @@
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.15, 11.0.0)",
           "Npgsql": "10.0.4"
         }
+      },
+      "AWSSDK.Core": {
+        "type": "Transitive",
+        "resolved": "4.1.1.1",
+        "contentHash": "paZNy+g/hXMCsEpWvmOFr14x9gVzIY2JRSzSk+nXpKcnaASxEFBMWE4CNBuI/WwGN1ygTwojRTsPRn3yXuhSYQ==",
+        "dependencies": {
+          "AWSSDK.Extensions.Numerics": "[4.1.0, 5.0.0)",
+          "System.IO.Hashing": "11.0.0"
+        }
+      },
+      "AWSSDK.Extensions.Numerics": {
+        "type": "Transitive",
+        "resolved": "4.1.0",
+        "contentHash": "hhoiXT1aUyVgIiQbQoqG3L1EEneqXDh2GKyH5izUlO6Rzi9GAAi8S6mlLiVwow23+EGg77zHjdmUi+ia3RSUTg=="
       },
       "Humanizer.Core": {
         "type": "Transitive",
@@ -225,6 +248,11 @@
           "System.Composition.Hosting": "9.0.0",
           "System.Composition.Runtime": "9.0.0"
         }
+      },
+      "System.IO.Hashing": {
+        "type": "Transitive",
+        "resolved": "11.0.0",
+        "contentHash": "U+Bv2qCYt6eONi+arSP0QIp4uTO6os6uceBsqiAwruZ+Wo2HrRhO/0tj38M9URJtS+4DhAtT3ka2TGNFYsnhyQ=="
       },
       "zirrus.application": {
         "type": "Project",

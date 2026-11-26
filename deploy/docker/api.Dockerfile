@@ -7,11 +7,14 @@ COPY src/ src/
 RUN dotnet restore src/Zirrus.Api/Zirrus.Api.csproj --locked-mode
 # The OpenAPI document is generated and committed during development; skip generation in images.
 RUN dotnet publish src/Zirrus.Api/Zirrus.Api.csproj -c Release -o /app --no-restore -p:OpenApiGenerateDocuments=false
+# Blob store mount point, owned by the non-root user so a fresh named volume inherits it.
+RUN mkdir -p /blobs
 
 # Chiseled runtime: no shell or package manager; non-root "app" user (UID 1654).
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled@sha256:bcdfe6b8e923ad3d05f01dfa805ab97c99d742823ce030856002a6db38122712
 WORKDIR /app
 COPY --from=build /app ./
+COPY --from=build --chown=1654:1654 /blobs /var/lib/zirrus/blobs
 ENV ASPNETCORE_HTTP_PORTS=8080
 USER app
 EXPOSE 8080
