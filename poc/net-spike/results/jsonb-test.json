@@ -1,0 +1,28 @@
+{
+  "test": "jsonb-test",
+  "rows": 100000,
+  "seedSeconds": 1.7,
+  "matches": 644,
+  "queryMs": 81.6,
+  "usesGinIndex": true,
+  "sql": "-- @catalog=\u00272573ee7b-8ddc-47f9-9064-240799d12186\u0027\n-- @filter=\u0027System.Text.Json.JsonDocument\u0027 (DbType = Object)\nSELECT a.\u0022Id\u0022, a.\u0022CatalogId\u0022, a.\u0022Metadata\u0022, a.\u0022Revision\u0022, a.\u0022Sha256\u0022, a.\u0022State\u0022\nFROM assets AS a\nWHERE a.\u0022CatalogId\u0022 = @catalog AND a.\u0022State\u0022 = \u0027Active\u0027 AND a.\u0022Metadata\u0022 @\u003E @filter",
+  "plan": [
+    "Aggregate  (cost=790.73..790.74 rows=1 width=8) (actual time=3.544..3.546 rows=1 loops=1)",
+    "  Buffers: shared hit=1554",
+    "  -\u003E  Bitmap Heap Scan on assets  (cost=752.39..790.72 rows=3 width=0) (actual time=1.438..3.504 rows=644 loops=1)",
+    "        Recheck Cond: (\u0022Metadata\u0022 @\u003E \u0027{\u0022creator\u0022: \u0022photographer-7\u0022}\u0027::jsonb)",
+    "        Filter: ((\u0022CatalogId\u0022 = \u00272573ee7b-8ddc-47f9-9064-240799d12186\u0027::uuid) AND (\u0022State\u0022 = \u0027Active\u0027::text))",
+    "        Rows Removed by Filter: 1330",
+    "        Heap Blocks: exact=1376",
+    "        Buffers: shared hit=1554",
+    "        -\u003E  Bitmap Index Scan on \u0022IX_assets_Metadata\u0022  (cost=0.00..752.39 rows=10 width=0) (actual time=1.268..1.269 rows=1974 loops=1)",
+    "              Index Cond: (\u0022Metadata\u0022 @\u003E \u0027{\u0022creator\u0022: \u0022photographer-7\u0022}\u0027::jsonb)",
+    "              Buffers: shared hit=178",
+    "Planning:",
+    "  Buffers: shared hit=62",
+    "Planning Time: 0.270 ms",
+    "Execution Time: 3.585 ms"
+  ],
+  "staleUpdateRejected": true,
+  "pass": true
+}

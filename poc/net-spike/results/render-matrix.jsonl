@@ -1,0 +1,12 @@
+{"engine":"netvips","file":"photo-50mp.jpg","ok":true,"source":"8640x5760","thumbnail":"213x320","preview":"1067x1600","ms":1321,"peakRssMiB":172}
+{"engine":"netvips","file":"graphic.png","ok":true,"source":"2000x1500","thumbnail":"320x240","preview":"1600x1200","ms":96,"peakRssMiB":62.9}
+{"engine":"netvips","file":"graphic.webp","ok":true,"source":"2000x1500","thumbnail":"320x240","preview":"1600x1200","ms":125,"peakRssMiB":77.4}
+{"engine":"netvips","file":"oversize-108mp.jpg","ok":false,"error":"rejected: decoded size 12000x9000 exceeds 50000000 pixels","ms":38,"peakRssMiB":37.4}
+{"engine":"netvips","file":"truncated.jpg","ok":false,"error":"rejected: unable to call VipsForeignSaveWebpFile","ms":227,"peakRssMiB":58}
+{"engine":"netvips","file":"eicar.jpg","ok":false,"error":"rejected: magic bytes are not JPEG, PNG or WebP","peakRssMiB":26.7}
+{"engine":"skia","file":"photo-50mp.jpg","ok":true,"source":"8640x5760","thumbnail":"213x320","preview":"1067x1600","ms":1018,"peakRssMiB":77.2}
+{"engine":"skia","file":"graphic.png","ok":true,"source":"2000x1500","thumbnail":"320x240","preview":"1600x1200","ms":258,"peakRssMiB":76}
+{"engine":"skia","file":"graphic.webp","ok":true,"source":"2000x1500","thumbnail":"320x240","preview":"1600x1200","ms":405,"peakRssMiB":70.4}
+{"engine":"skia","file":"oversize-108mp.jpg","ok":false,"error":"rejected: decoded size 12000x9000 exceeds 50000000 pixels","ms":39,"peakRssMiB":33.3}
+{"engine":"skia","file":"truncated.jpg","ok":false,"error":"rejected: decode failed: IncompleteInput","ms":398,"peakRssMiB":46.1}
+{"engine":"skia","file":"eicar.jpg","ok":false,"error":"rejected: magic bytes are not JPEG, PNG or WebP","peakRssMiB":26.8}

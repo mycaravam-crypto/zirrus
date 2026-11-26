@@ -1,0 +1,7 @@
+{
+  "name": "zirrus-spike-oidc-test-provider",
+  "private": true,
+  "type": "module",
+  "description": "Spike-only OpenID provider (stand-in for Keycloak, see RESULTS.md)",
+  "dependencies": { "oidc-provider": "9.15.1" }
+}

@@ -1,0 +1,5 @@
+root = true
+
+# EF Core migrations are generated and reviewed as SQL (ADR 0005); keep analyzers off them.
+[**/Migrations/*.cs]
+generated_code = true

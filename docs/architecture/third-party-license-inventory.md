@@ -5,14 +5,14 @@ Status: preliminary, not a release SBOM. Verify exact package versions, transiti
 |---|---|---|
 | .NET SDK/runtime, ASP.NET Core, EF Core | MIT | Notices; verify bundled third-party components |
 | Npgsql, Npgsql EF Core provider | PostgreSQL License | Verify selected packages |
-| NetVips / libvips | MIT / LGPL-2.1-or-later (verify native package) | Rendering candidate (spike vs. SkiaSharp); review native linkage and bundled codecs |
-| SkiaSharp / Skia | MIT / BSD-3-Clause (verify native assets) | Rendering candidate (spike vs. NetVips); fully permissive |
+| NetVips / NetVips.Native | MIT / **LGPL-3.0-or-later** (package expression; bundles LGPL-3.0 glib, libheif, libexif, pango, fribidi, librsvg and MPL-1.1 cairo) | Only if TIFF/HEIC/RAW are added; LGPL-3.0 review required |
+| SkiaSharp / NativeAssets.Linux.NoDependencies | MIT; bundles BSD/MIT/Apache components and a GIF decoder under MPL-1.1/GPL/LGPL tri-license (elect MPL-1.1) | Recommended MVP renderer (spike); keep notices |
 | Magick.NET / ImageMagick | Apache-2.0 wrapper / ImageMagick License; bundled delegates vary (e.g. libheif, LibRaw; verify) | Only for extended formats (TIFF/HEIC/RAW); Q8 build and coder allowlist |
 | xUnit, Testcontainers for .NET | Apache-2.0; MIT respectively (verify) | Test-only; verify versions |
 | Wolverine, Rebus (queue candidates) | MIT (verify exact packages) | Not used initially; in-house Npgsql consumer behind `IJobQueue` (ADR 0002) |
 | Mapperly / FluentValidation | Apache-2.0 | Optional; prefer direct mapping and built-in validation |
 | Shouldly / NSubstitute | BSD-3-Clause (verify) | Optional test-only |
-| MetadataExtractor / XmpCore | Apache-2.0 / BSD-3-Clause (verify) | Metadata candidate; ExifTool fallback for missing fields |
+| MetadataExtractor / XmpCore 6.1.10.1 | Apache-2.0 / **no SPDX expression**; license URL points to Adobe XMP library terms | Metadata candidate; ExifTool fallback for missing fields |
 | AWS SDK for .NET (S3 client) | Apache-2.0 | S3 adapter client |
 | SeaweedFS | Apache-2.0 (verify) | Preferred S3-compatible test server |
 | MinIO | AGPL-3.0 (verify current distribution terms) | Test-tool exception only, never production by default |
