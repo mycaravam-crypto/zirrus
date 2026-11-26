@@ -6,8 +6,23 @@ issue: https://github.com/mycaravam-crypto/zirrus/issues/10
 
 # ADR 0008: Container runtime and deployment
 
-## Context and proposed decision
-Prefer Linux Docker Engine + Compose v2 over Kubernetes for a single-host MVP. Podman best-effort pending compatibility; Docker Desktop optional subject to licensing. Caddy sole public ingress; private service networks, persistent volumes and isolated parser execution. Validate clean-host boot and recovery before acceptance.
+## Context and decision drivers
+Self-hosted reference deployment should be reproducible and require minimal operating effort.
 
-## Consequences and acceptance
-See the [consolidated architecture documents](../architecture/quality-mvp-roadmap.md) and the owning issue for test evidence, alternatives and residual risks. Review with affected issue owners; no approval or executed PoC is implied.
+## Considered options
+- Docker Engine + Compose: low setup overhead; single-host failure domain.
+- Podman: permissive alternative; Compose behavior and rootless compatibility require testing.
+- Kubernetes: orchestration and multi-host scheduling; disproportionate complexity for this MVP.
+
+## Proposed decision
+Prefer Linux Docker Engine and Compose v2. Caddy sole public ingress, private networks, pinned images, non-root processes, isolated parsers and PostgreSQL-backed jobs. Docker Desktop optional under its separate terms; Kubernetes deferred.
+
+## Consequences
+- Document volume ownership, backup coverage and health checks.
+- Single-host downtime remains possible; enforce RPO/RTO and recovery drills.
+- Revisit orchestration when measured scaling or multi-host availability requirements cannot be met.
+
+## Acceptance evidence
+Validate clean-host Compose boot, health, secret handling, network isolation, backup/restore, failed migration recovery and supported architectures. See [deployment](../architecture/deployment-delivery.md#runtime) and [recovery](../architecture/deployment-delivery.md#backuprecovery).
+
+Validation and approving review pending; no executed PoC implied.
