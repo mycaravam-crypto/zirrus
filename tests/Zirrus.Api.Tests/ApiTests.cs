@@ -71,7 +71,9 @@ public sealed class HealthAndContractTests(PostgresFixture fixture) : IClassFixt
     public async Task Membership_cannot_reference_a_catalog_of_another_organization()
     {
         await using var db = fixture.CreateContext();
-        var foreign = Catalog.Create(Guid.NewGuid(), "Foreign org catalog", DateTimeOffset.UtcNow);
+        var other = Organization.Create(Guid.NewGuid(), "Other organization", DateTimeOffset.UtcNow);
+        var foreign = Catalog.Create(other.Id, "Foreign org catalog", DateTimeOffset.UtcNow);
+        db.Organizations.Add(other);
         db.Catalogs.Add(foreign);
         await db.SaveChangesAsync(Api.Ct);
 

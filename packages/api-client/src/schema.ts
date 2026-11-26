@@ -77,10 +77,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/catalogs/{catalogId}/assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one asset with its state, checksum, metadata and ETag
+         * @description Viewers see active assets only; editors also see pending, rejected and failed ones. The ETag carries the revision for If-Match.
+         */
+        get: operations["GetAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/{catalogId}/assets/{assetId}/metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace an asset's metadata (editors)
+         * @description Send the ETag from GET in If-Match. A stale ETag returns 412 and changes nothing.
+         */
+        put: operations["ReplaceAssetMetadata"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Asset as returned by the API. */
+        AssetDetails: {
+            /**
+             * Format: uuid
+             * @description Asset identifier.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Catalog.
+             */
+            catalogId: string;
+            /** @description Original file name. */
+            fileName: string;
+            /** @description Media type. */
+            mediaType: string;
+            /**
+             * Format: int64
+             * @description Size of the original, once stored.
+             */
+            sizeBytes: null | number | string;
+            /** @description SHA-256 of the original, once stored. */
+            sha256: null | string;
+            /** @description Lifecycle state in lowercase, e.g. `active`. */
+            state: string;
+            /** @description Reason for rejected or failed assets. */
+            statusReason: null | string;
+            /** @description User metadata as a JSON object. */
+            metadata: components["schemas"]["JsonElement"];
+            /**
+             * Format: int32
+             * @description Current revision; the ETag is its quoted form.
+             */
+            revision: number | string;
+            /**
+             * Format: date-time
+             * @description Creation time (UTC).
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Last change (UTC).
+             */
+            updatedAt: string;
+        };
         /** @description A catalog member as returned to administrators. */
         CatalogMember: {
             /** @description Identity-provider subject. */
@@ -131,6 +216,7 @@ export interface components {
             /** @description True for organization administrators. */
             isOrganizationAdmin: boolean;
         };
+        JsonElement: unknown;
         ProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -357,6 +443,121 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReplaceAssetMetadata: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string;
+            };
+            path: {
+                catalogId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonElement"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetDetails"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
                 headers: {
                     [name: string]: unknown;
                 };

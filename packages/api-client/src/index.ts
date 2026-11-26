@@ -6,6 +6,7 @@ import type { components, paths } from "./schema";
 export type CatalogSummary = components["schemas"]["CatalogSummary"];
 export type CurrentUserInfo = components["schemas"]["CurrentUserInfo"];
 export type CsrfToken = components["schemas"]["CsrfToken"];
+export type AssetDetails = components["schemas"]["AssetDetails"];
 
 /** Creates a client for the same-origin API (Caddy routes /api to the API container). */
 export function createZirrusClient(baseUrl = "") {

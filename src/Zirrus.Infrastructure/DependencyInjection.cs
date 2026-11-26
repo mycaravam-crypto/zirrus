@@ -5,10 +5,13 @@ using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Zirrus.Application.Assets;
 using Zirrus.Application.Identity;
 using Zirrus.Application.Catalogs;
+using Zirrus.Application.Storage;
 using Zirrus.Infrastructure.Identity;
 using Zirrus.Infrastructure.Persistence;
+using Zirrus.Infrastructure.Storage;
 
 namespace Zirrus.Infrastructure;
 
@@ -54,7 +57,36 @@ public static class DependencyInjection
         services.AddScoped<ListCatalogs>();
         services.AddScoped<CatalogAccess>();
         services.AddScoped<CatalogAdministration>();
+        services.AddScoped<IAssetStore, AssetStore>();
+        services.AddScoped<AssetUseCases>();
+        services.AddScoped<IStorageInventory, StorageInventory>();
+        services.AddScoped<ReconcileStorage>();
+        services.AddHostedService<OrganizationBootstrap>();
+        services.AddZirrusBlobStore(configuration);
         services.AddHealthChecks().AddDbContextCheck<ZirrusDbContext>("database", tags: ["ready"]);
+        return services;
+    }
+
+    /// <summary>
+    /// Adds the blob store selected by <c>Storage:Provider</c>: <c>filesystem</c> (default, under
+    /// <c>Storage:Root</c>) or <c>s3</c> (<c>Storage:S3</c>). The store is created on first use.
+    /// </summary>
+    /// <param name="services">Service collection.</param>
+    /// <param name="configuration">Application configuration.</param>
+    /// <returns>The service collection.</returns>
+    public static IServiceCollection AddZirrusBlobStore(this IServiceCollection services, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        services.AddSingleton<IBlobStore>(_ =>
+        {
+            var options = configuration.GetSection("Storage").Get<StorageOptions>() ?? new StorageOptions();
+            return options.Provider.ToUpperInvariant() switch
+            {
+                "FILESYSTEM" => new FileSystemBlobStore(options.Root),
+                "S3" => new S3BlobStore(options.S3),
+                _ => throw new InvalidOperationException($"Unknown Storage:Provider '{options.Provider}'; use 'filesystem' or 's3'."),
+            };
+        });
         return services;
     }
 

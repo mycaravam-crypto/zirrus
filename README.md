@@ -14,7 +14,7 @@ Web-based digital asset management (DAM). Design and decisions: [`docs/`](docs/a
 | `docs/`, `poc/` | Design documentation; throwaway spikes |
 
 ## Prerequisites
-- .NET SDK 10.0.1xx (`global.json`), Node.js 22 (`.nvmrc`) with Corepack, Docker Engine with Compose v2.
+- .NET SDK 10.0.1xx (`global.json`), Node.js 26 (`.nvmrc`) with Corepack, Docker Engine with Compose v2.
 - PostgreSQL 18 for local runs, either from Compose (`compose.dev.yaml`) or a local server.
 
 ## Build and test
@@ -48,6 +48,13 @@ Set `ZIRRUS_SITE_ADDRESS` to a domain name for automatic HTTPS. For local develo
 - **Roles:** the identity provider's realm role `admin` makes a user an organization administrator; map realm roles to a `roles` claim in the ID token. Administrators grant `editor` or `viewer` per catalog with `PUT /api/v1/catalogs/{id}/members/{subject}`.
 - **Key ring:** `deploy/init-secrets.sh` also creates `dataprotection_key`, which encrypts the Data Protection key ring stored in PostgreSQL. Production refuses to start without it.
 - **Test realm:** `deploy/keycloak/zirrus-realm.json` and `compose.test.yaml` run Keycloak for the CI end-to-end test. Their credentials are test-only.
+
+## Assets and storage (W3)
+- **Model:** organizations, catalogs, assets (lifecycle state, SHA-256, revision, JSONB metadata), renditions, categories, metadata schemas and job intents. Composite foreign keys keep every row inside its catalog.
+- **Storage:** `Storage__Provider` is `filesystem` (default; `Storage__Root`, the `blobs` volume in Compose) or `s3` (`Storage__S3__ServiceUrl`, `Bucket`, `AccessKey`, `SecretKey`). Back up `blobs` together with `pgdata`.
+- **Concurrency:** `GET /api/v1/catalogs/{catalogId}/assets/{assetId}` returns the revision as the ETag. `PUT …/metadata` requires `If-Match` and returns 412 on a stale revision and 428 when it is missing.
+- **Reconciliation:** the worker logs a report every 6 hours (`Reconciliation__Interval`, `Reconciliation__StaleAfter`). It never deletes anything.
+- **S3 tests:** these use SeaweedFS through Testcontainers. Without Docker, set `ZIRRUS_TEST_S3` to an S3-compatible endpoint.
 
 ## Adding a database migration
 ```bash

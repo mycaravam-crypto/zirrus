@@ -271,10 +271,270 @@
           }
         }
       }
+    },
+    "/api/v1/catalogs/{catalogId}/assets/{assetId}": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Read one asset with its state, checksum, metadata and ETag",
+        "description": "Viewers see active assets only; editors also see pending, rejected and failed ones. The ETag carries the revision for If-Match.",
+        "operationId": "GetAsset",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogs/{catalogId}/assets/{assetId}/metadata": {
+      "put": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Replace an asset's metadata (editors)",
+        "description": "Send the ETag from GET in If-Match. A stale ETag returns 412 and changes nothing.",
+        "operationId": "ReplaceAssetMetadata",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition Failed",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Precondition Required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AssetDetails": {
+        "required": [
+          "id",
+          "catalogId",
+          "fileName",
+          "mediaType",
+          "sizeBytes",
+          "sha256",
+          "state",
+          "statusReason",
+          "metadata",
+          "revision",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Asset identifier.",
+            "format": "uuid"
+          },
+          "catalogId": {
+            "type": "string",
+            "description": "Catalog.",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string",
+            "description": "Original file name."
+          },
+          "mediaType": {
+            "type": "string",
+            "description": "Media type."
+          },
+          "sizeBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Size of the original, once stored.",
+            "format": "int64"
+          },
+          "sha256": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "SHA-256 of the original, once stored."
+          },
+          "state": {
+            "type": "string",
+            "description": "Lifecycle state in lowercase, e.g. `active`."
+          },
+          "statusReason": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Reason for rejected or failed assets."
+          },
+          "metadata": {
+            "description": "User metadata as a JSON object.",
+            "$ref": "#/components/schemas/JsonElement"
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Current revision; the ETag is its quoted form.",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Creation time (UTC).",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Last change (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "Asset as returned by the API."
+      },
       "CatalogMember": {
         "required": [
           "subject",
@@ -383,6 +643,7 @@
         },
         "description": "The signed-in user, as returned by `GET /api/v1/me`."
       },
+      "JsonElement": { },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -442,6 +703,9 @@
     },
     {
       "name": "Catalogs"
+    },
+    {
+      "name": "Assets"
     }
   ]
 }

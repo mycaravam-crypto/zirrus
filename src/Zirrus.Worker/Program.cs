@@ -12,6 +12,8 @@ var builder = WebApplication.CreateSlimBuilder(args);
 builder.Configuration.AddZirrusSecrets();
 builder.Services.AddZirrusInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<HeartbeatService>();
+builder.Services.Configure<ReconciliationSettings>(builder.Configuration.GetSection("Reconciliation"));
+builder.Services.AddHostedService<ReconciliationService>();
 
 var app = builder.Build();
 app.MapZirrusHealthChecks();
