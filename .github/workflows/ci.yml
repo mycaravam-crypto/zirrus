@@ -61,8 +61,8 @@ jobs:
         with: { persist-credentials: false }
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: { node-version-file: .nvmrc, package-manager-cache: false }
-      - name: Enable pnpm (version from package.json)
-        run: corepack enable
+      - name: Enable pnpm (version from package.json; Node 25+ does not bundle Corepack)
+        run: npm install --global corepack@0.36.0 && corepack enable
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
       - name: Generated API client is current
@@ -88,7 +88,7 @@ jobs:
         with: { node-version-file: .nvmrc, package-manager-cache: false }
       - name: Restore
         run: |
-          corepack enable
+          npm install --global corepack@0.36.0 && corepack enable
           dotnet tool restore
           dotnet restore Zirrus.slnx --locked-mode
           pnpm install --frozen-lockfile

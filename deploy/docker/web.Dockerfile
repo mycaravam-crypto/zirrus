@@ -3,7 +3,8 @@
 # Node and Caddy are pinned to exact versions; digest pinning follows in W8 (#28).
 FROM node:26.13.0-bookworm-slim AS build
 WORKDIR /src
-RUN corepack enable
+# Node 25+ no longer bundles Corepack; install a pinned copy (MIT), then pnpm comes from package.json.
+RUN npm install --global corepack@0.36.0 && corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/
 COPY packages/api-client/package.json packages/api-client/

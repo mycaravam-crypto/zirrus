@@ -14,7 +14,7 @@ Web-based digital asset management (DAM). Design and decisions: [`docs/`](docs/a
 | `docs/`, `poc/` | Design documentation; throwaway spikes |
 
 ## Prerequisites
-- .NET SDK 10.0.1xx (`global.json`), Node.js 26 (`.nvmrc`) with Corepack, Docker Engine with Compose v2.
+- .NET SDK 10.0.1xx (`global.json`), Node.js 26 (`.nvmrc`) with Corepack (`npm install -g corepack@0.36.0`; Node 25+ does not bundle it), Docker Engine with Compose v2.
 - PostgreSQL 18 for local runs, either from Compose (`compose.dev.yaml`) or a local server.
 
 ## Build and test
@@ -23,7 +23,7 @@ dotnet restore Zirrus.slnx --locked-mode
 dotnet build Zirrus.slnx              # also regenerates packages/api-client/openapi/zirrus-api.json
 dotnet test --solution Zirrus.slnx    # integration tests start PostgreSQL 18 with Testcontainers
 
-corepack enable
+corepack enable                       # after installing Corepack, see Prerequisites
 pnpm install --frozen-lockfile
 pnpm generate                         # regenerates packages/api-client/src/schema.ts
 pnpm typecheck && pnpm lint && pnpm test
