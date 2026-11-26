@@ -7,17 +7,26 @@ issue: https://github.com/mycaravam-crypto/zirrus/issues/2
 # ADR 0002: Background job backend
 
 ## Context
-DAM ingestion must tolerate retries and process restarts. Redis 7.4 offers RSALv2/SSPLv1; Redis 8 also offers AGPLv3. Valkey is BSD licensed. BullMQ documentation describes Valkey compatibility. Its [PostgreSQL backend guide](https://docs.bullmq.io/guide/postgresql) also describes an optional backend; the first supported package version, maturity and license/edition availability remain unverified. Do not treat it as an approved fallback.
+DAM ingestion must tolerate retries and process restarts. The backend is .NET (ADR 0001). The [system architecture](../architecture/system-architecture.md) already makes a PostgreSQL outbox, written in the asset transaction, the source of truth for job intent. Dispatch is at least once, with deterministic idempotency keys and reconciliation. .NET hosted services alone are not durable.
 
-## Options
-- BullMQ + Valkey: permissive server license, separate service and persistence overhead.
-- BullMQ + Redis 8: documented default integration, additional licensing review.
-- PostgreSQL-backed job processing: fewer services, potential database contention and feature differences. Evaluate a supported implementation independently; BullMQ's optional backend is only a candidate pending version, edition, license and feature verification.
+## Considered options
+- **PostgreSQL-backed queue consumed by a .NET worker**, either a permissive library with PostgreSQL persistence (e.g. Wolverine, Rebus; verify licenses) or a small in-house consumer using `FOR UPDATE SKIP LOCKED` with leases.
+- **Separate broker** (Valkey or Redis with a .NET client, or RabbitMQ): extra stateful service, persistence and license review (Redis 7.4 is RSALv2/SSPLv1; Redis 8 adds AGPLv3; Valkey is BSD-3-Clause).
+- **Hangfire with a PostgreSQL provider:** mature, but core is LGPL-3.0 with paid Pro features. Exception review under ADR 0003.
 
 ## Proposed decision
-Prefer BullMQ + supported Valkey 8.1 or 9.x after compatibility verification; keep PostgreSQL-based processing as a separate evaluation option if operational simplicity or measured workload warrants it. Do not use an unsupported Redis release to avoid licensing obligations.
+Use a PostgreSQL-backed queue consumed by the .NET worker, with **no separate broker in the MVP**.
+
+- **Implementation:** a small in-house Npgsql consumer (`FOR UPDATE SKIP LOCKED`, leases, backoff, dead-letter state) behind an `IJobQueue` port, so a library can replace it locally later.
+- **Next candidate:** Wolverine PostgreSQL transport (MIT; exact package and transitive license review required), adopted only if scheduled jobs, sagas or many message types are needed. Rebus remains an alternative.
+- **Broker:** only if measured contention or throughput (#12, Q2) requires it.
+
+See the [open-source evaluation](../architecture/open-source-dependencies.md#queue-decision-experiment). The spike validates the consumer; nothing is accepted yet.
 
 ## Consequences and validation
-Use PostgreSQL as authoritative asset state; design transactional outbox or equivalent reconciliation with #5/#7. Test pinned client/server versions for enqueue, delayed retries, concurrent jobs, duplicate handling, worker termination/restart, persistence/restart, connection loss, and non-evicting queue configuration. Verify ACL/TLS and recovery assumptions. Record results and compare resource overhead. No compatibility test has been executed yet.
+- One fewer stateful service to run, secure, back up and license-review.
+- Queue load shares PostgreSQL; watch lock contention, vacuum and connection-pool use.
+- Spike pass criteria: kill the worker mid-job 20 times; each job completes once logically; outbox re-dispatch recovers lost work; retries use exponential backoff; dead-lettered jobs are visible to operators.
+- No compatibility test has been executed yet.
 
-Sources: https://docs.bullmq.io/ ; https://redis.io/legal/licenses/ ; https://valkey.io/docs/topics/introduction/ ; https://valkey.io/topics/releases/
+Sources: https://redis.io/legal/licenses/ ; https://valkey.io/docs/topics/introduction/ ; https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE

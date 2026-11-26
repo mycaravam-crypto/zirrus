@@ -3,14 +3,28 @@ Status: preliminary, not a release SBOM. Verify exact package versions, transiti
 
 | Component | Expected upstream license | Review disposition |
 |---|---|---|
-| Node.js, TypeScript | MIT; Apache-2.0 respectively | Notices; bundled components |
+| .NET SDK/runtime, ASP.NET Core, EF Core | MIT | Notices; verify bundled third-party components |
+| Npgsql, Npgsql EF Core provider | PostgreSQL License | Verify selected packages |
+| NetVips / libvips | MIT / LGPL-2.1-or-later (verify native package) | Rendering candidate (spike vs. SkiaSharp); review native linkage and bundled codecs |
+| SkiaSharp / Skia | MIT / BSD-3-Clause (verify native assets) | Rendering candidate (spike vs. NetVips); fully permissive |
+| Magick.NET / ImageMagick | Apache-2.0 wrapper / ImageMagick License; bundled delegates vary (e.g. libheif, LibRaw; verify) | Only for extended formats (TIFF/HEIC/RAW); Q8 build and coder allowlist |
+| xUnit, Testcontainers for .NET | Apache-2.0; MIT respectively (verify) | Test-only; verify versions |
+| Wolverine, Rebus (queue candidates) | MIT (verify exact packages) | Not used initially; in-house Npgsql consumer behind `IJobQueue` (ADR 0002) |
+| Mapperly / FluentValidation | Apache-2.0 | Optional; prefer direct mapping and built-in validation |
+| Shouldly / NSubstitute | BSD-3-Clause (verify) | Optional test-only |
+| MetadataExtractor / XmpCore | Apache-2.0 / BSD-3-Clause (verify) | Metadata candidate; ExifTool fallback for missing fields |
+| AWS SDK for .NET (S3 client) | Apache-2.0 | S3 adapter client |
+| SeaweedFS | Apache-2.0 (verify) | Preferred S3-compatible test server |
+| MinIO | AGPL-3.0 (verify current distribution terms) | Test-tool exception only, never production by default |
+| k6 | AGPL-3.0 | Load tests (Q1) as test-tool exception: unmodified, CI-only, not distributed |
+| Gatling (open-source edition) | Apache-2.0 | Alternative if a permissive load-test tool is required |
+| ImageSharp / NBomber v5+ | conditional split license / commercial terms (verify) | Avoid by default |
+| Hangfire, MassTransit v9+, MediatR, AutoMapper, FluentAssertions v8+ | LGPL-3.0 or commercial (verify current terms) | Avoid; see ADR 0003 review list |
+| TypeScript, Node.js (frontend build only) | Apache-2.0; MIT respectively | Notices for shipped bundles only |
 | React, Vite, Tailwind, shadcn/ui, TanStack | MIT (candidate packages) | Verify copied components and transitive dependencies |
-| NestJS, Drizzle ORM | MIT; Apache-2.0 respectively | Verify selected packages |
+| OpenAPI TS client generator (e.g. openapi-typescript, Orval) | MIT (verify selected tool) | Build-time only |
 | PostgreSQL | PostgreSQL | Verify extensions |
-| BullMQ OSS | MIT | Exclude commercial Pro features unless approved |
-| Valkey | BSD-3-Clause | Preferred |
-| Redis 7.4 / 8 | RSALv2 or SSPLv1 / additionally AGPLv3 | Exception review |
-| Sharp / libvips | Apache-2.0 / LGPL-2.1-or-later (verify binary) | Review native linkage and bundled codecs |
+| Valkey / Redis | BSD-3-Clause / RSALv2, SSPLv1, AGPLv3 | Not used in the MVP (ADR 0002); review again only if a broker is added |
 | ExifTool | Same terms as Perl (Artistic or GPL option; verify exact terms) | Review distribution notices |
 | ClamAV | GPL-2.0 family (verify release) | Review separate service distribution/source obligations and signatures |
 | FFmpeg | LGPL-2.1-or-later default; GPL with optional parts | Deferred; inspect build flags, codecs and redistribution terms |
@@ -19,9 +33,10 @@ Status: preliminary, not a release SBOM. Verify exact package versions, transiti
 | Docker Desktop | Docker Subscription Service Agreement | Optional; free eligibility or paid subscription must be verified; government entities require paid subscription |
 | Podman | Apache-2.0 (candidate; verify release) | Alternative runtime; validate Compose compatibility in #10 |
 | pnpm | MIT | Verify selected version |
-| OpenTelemetry | Apache-2.0 | Verify exporters |
+| OpenTelemetry (.NET, JS) | Apache-2.0 | Verify exporters |
 | OpenSearch (deferred) | Apache-2.0 | Verify plugins |
-| Vitest, Testing Library, Supertest, Testcontainers, Playwright, k6, axe-core, ZAP, Trivy, CycloneDX | Mixed; exact packages TBD | Inventory build/test tooling before adoption; assess k6 AGPL obligations |
+| Vitest, Testing Library, Playwright, axe-core, ZAP, Trivy, CycloneDX | Mixed; exact packages TBD | Inventory build/test tooling before adoption |
+| DocWizz | Apache-2.0 | CI-only tool, not distributed |
 | GitHub Actions / Dependabot | Service terms and individual action licenses | Pin and review actions |
 
-Primary references: https://redis.io/legal/licenses/ ; https://valkey.io/docs/topics/introduction/ ; https://www.ffmpeg.org/legal.html ; https://exiftool.org/ ; https://sharp.pixelplumbing.com/ ; https://www.libvips.org/ ; https://www.clamav.net/ . Docker references: https://docs.docker.com/engine/ and https://docs.docker.com/subscription-billing/desktop-license/ . Docker Engine and Desktop terms were checked during review; remaining unverified entries are preliminary and must be confirmed against versioned upstream license files. No legal approval claimed.
+Primary references: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT ; https://github.com/npgsql/npgsql/blob/main/LICENSE ; https://www.libvips.org/ ; https://exiftool.org/ ; https://www.clamav.net/ ; https://www.ffmpeg.org/legal.html ; https://redis.io/legal/licenses/ . Docker references: https://docs.docker.com/engine/ and https://docs.docker.com/subscription-billing/desktop-license/ . Entries marked "verify" are preliminary and must be confirmed against versioned upstream license files. No legal approval claimed. See [open-source dependency selection](open-source-dependencies.md) for alternatives and admission evidence.
