@@ -14,7 +14,9 @@
 		Referrer-Policy no-referrer
 	}
 
-	handle /api/* {
+	# API and the browser-facing sign-in routes (OIDC login, callbacks and logout).
+	@api path /api/* /login /logout /signin-oidc /signout-callback-oidc
+	handle @api {
 		reverse_proxy api:8080
 	}
 

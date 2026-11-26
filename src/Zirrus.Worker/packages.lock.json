@@ -46,10 +46,20 @@
       "zirrus.infrastructure": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore": "[10.0.15, )",
           "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "[10.0.15, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.4, )",
           "Zirrus.Application": "[1.0.0, )",
           "Zirrus.Domain": "[1.0.0, )"
+        }
+      },
+      "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.15, )",
+        "resolved": "10.0.15",
+        "contentHash": "5MxWxwFz0ZahD60+YnYFQQtWvwmCMnXDDvWuAncRxy5Fmf7wbdTrwe2CHGcW1wqow023wfJpgItaXFt9g86huQ==",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "10.0.15"
         }
       },
       "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": {

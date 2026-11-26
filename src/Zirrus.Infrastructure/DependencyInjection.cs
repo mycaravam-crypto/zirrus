@@ -1,8 +1,13 @@
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Zirrus.Application.Identity;
 using Zirrus.Application.Catalogs;
+using Zirrus.Infrastructure.Identity;
 using Zirrus.Infrastructure.Persistence;
 
 namespace Zirrus.Infrastructure;
@@ -40,9 +45,50 @@ public static class DependencyInjection
         services.AddDbContext<ZirrusDbContext>(options => options.UseNpgsql(
             configuration.GetConnectionString(ConnectionStringName)
             ?? throw new InvalidOperationException($"Connection string '{ConnectionStringName}' is not configured.")));
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(_ => new OrganizationContext(
+            configuration.GetValue<Guid?>("Zirrus:OrganizationId")
+            ?? throw new InvalidOperationException("Zirrus:OrganizationId is not configured.")));
         services.AddScoped<ICatalogReader, CatalogReader>();
+        services.AddScoped<ICatalogStore, CatalogStore>();
         services.AddScoped<ListCatalogs>();
+        services.AddScoped<CatalogAccess>();
+        services.AddScoped<CatalogAdministration>();
         services.AddHealthChecks().AddDbContextCheck<ZirrusDbContext>("database", tags: ["ready"]);
+        return services;
+    }
+
+    /// <summary>
+    /// Adds the shared Data Protection key ring (PostgreSQL, encrypted at rest) and the PostgreSQL
+    /// session store, so cookies and antiforgery tokens work across restarts and replicas.
+    /// </summary>
+    /// <param name="services">Service collection.</param>
+    /// <param name="configuration">Application configuration; reads <c>DataProtection:Key</c>.</param>
+    /// <param name="environment">Host environment; only Development may run without the key.</param>
+    /// <returns>The service collection.</returns>
+    /// <exception cref="InvalidOperationException">The key is missing outside Development.</exception>
+    public static IServiceCollection AddZirrusSessions(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(environment);
+        services.AddDataProtection()
+            .SetApplicationName("zirrus")
+            .PersistKeysToDbContext<ZirrusDbContext>();
+
+        var key = configuration["DataProtection:Key"];
+        if (!string.IsNullOrWhiteSpace(key))
+        {
+            var encryptionKey = new KeyRingEncryptionKey(key);
+            services.AddSingleton(encryptionKey);
+            services.Configure<KeyManagementOptions>(o => o.XmlEncryptor = new AesGcmXmlEncryptor(encryptionKey));
+        }
+        else if (!environment.IsDevelopment() && !Hosting.HostingExtensions.IsBuildTimeDocumentGeneration)
+        {
+            throw new InvalidOperationException(
+                "DataProtection:Key is required outside Development: the key ring must be encrypted at rest (security.md).");
+        }
+
+        services.AddSingleton<PostgresTicketStore>();
         return services;
     }
 }

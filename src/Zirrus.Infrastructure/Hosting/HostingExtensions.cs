@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Routing;
@@ -18,10 +19,17 @@ public static class HostingExtensions
     /// <returns>The route builder.</returns>
     public static IEndpointRouteBuilder MapZirrusHealthChecks(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
-        endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
+        endpoints.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false }).AllowAnonymous();
+        endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") }).AllowAnonymous();
         return endpoints;
     }
+
+    /// <summary>
+    /// True while the build-time OpenAPI generator (Microsoft.Extensions.ApiDescription.Server) starts the
+    /// app to read its endpoints. No request is served then, so secrets such as the key-ring key are not needed.
+    /// </summary>
+    public static bool IsBuildTimeDocumentGeneration =>
+        string.Equals(System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name, "GetDocument.Insider", StringComparison.Ordinal);
 
     /// <summary>
     /// Container health probe. Chiseled runtime images have no shell or curl, so Compose runs

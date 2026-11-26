@@ -5,13 +5,65 @@
     "version": "v1"
   },
   "paths": {
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Get the signed-in user and whether they are an organization administrator",
+        "operationId": "GetMe",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/antiforgery": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Get the CSRF token for unsafe requests and the logout form",
+        "operationId": "GetCsrfToken",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsrfToken"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/catalogs": {
       "get": {
         "tags": [
           "Catalogs"
         ],
-        "summary": "List the catalogs assets are organized in",
-        "description": "Returns all catalogs ordered by name. Until catalog permissions arrive (W2), every catalog is listed.",
+        "summary": "List the catalogs the caller may see, with their access level",
+        "description": "Organization administrators see every catalog; other users see the catalogs they hold a role in.",
         "operationId": "ListCatalogs",
         "responses": {
           "200": {
@@ -28,16 +80,231 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "Catalogs"
+        ],
+        "summary": "Create a catalog (organization administrators only)",
+        "operationId": "CreateCatalog",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCatalogRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogs/{catalogId}/members/{subject}": {
+      "put": {
+        "tags": [
+          "Catalogs"
+        ],
+        "summary": "Grant or change a user's role in a catalog (organization administrators only)",
+        "operationId": "SetCatalogMember",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "subject",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCatalogMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogMember"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Catalogs"
+        ],
+        "summary": "Remove a user's role in a catalog (organization administrators only)",
+        "operationId": "RemoveCatalogMember",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "subject",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
   "components": {
     "schemas": {
+      "CatalogMember": {
+        "required": [
+          "subject",
+          "role",
+          "grantedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Identity-provider subject."
+          },
+          "role": {
+            "type": "string",
+            "description": "Role name: `editor` or `viewer`."
+          },
+          "grantedAt": {
+            "type": "string",
+            "description": "When the role was granted (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "A catalog member as returned to administrators."
+      },
       "CatalogSummary": {
         "required": [
           "id",
           "name",
-          "createdAt"
+          "createdAt",
+          "access"
         ],
         "type": "object",
         "properties": {
@@ -54,13 +321,125 @@
             "type": "string",
             "description": "Creation time (UTC).",
             "format": "date-time"
+          },
+          "access": {
+            "type": "string",
+            "description": "The caller's access: `admin`, `editor` or `viewer`."
           }
         },
         "description": "Read model returned by catalog queries."
+      },
+      "CreateCatalogRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Catalog name, 1–200 characters, unique in the organization."
+          }
+        },
+        "description": "Request to create a catalog."
+      },
+      "CsrfToken": {
+        "required": [
+          "token",
+          "formFieldName"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Value to send in the `X-CSRF-TOKEN` header or the logout form field."
+          },
+          "formFieldName": {
+            "type": "string",
+            "description": "Form field name for the logout form."
+          }
+        },
+        "description": "Antiforgery token for the SPA, as returned by `GET /api/v1/antiforgery`."
+      },
+      "CurrentUserInfo": {
+        "required": [
+          "subject",
+          "name",
+          "isOrganizationAdmin"
+        ],
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Identity-provider subject."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name."
+          },
+          "isOrganizationAdmin": {
+            "type": "boolean",
+            "description": "True for organization administrators."
+          }
+        },
+        "description": "The signed-in user, as returned by `GET /api/v1/me`."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SetCatalogMemberRequest": {
+        "required": [
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "Role: `editor` or `viewer`."
+          }
+        },
+        "description": "Request to grant or change a catalog role."
       }
     }
   },
   "tags": [
+    {
+      "name": "Account"
+    },
     {
       "name": "Catalogs"
     }

@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the signed-in user and whether they are an organization administrator */
+        get: operations["GetMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/antiforgery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the CSRF token for unsafe requests and the logout form */
+        get: operations["GetCsrfToken"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/catalogs": {
         parameters: {
             query?: never;
@@ -12,13 +46,32 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List the catalogs assets are organized in
-         * @description Returns all catalogs ordered by name. Until catalog permissions arrive (W2), every catalog is listed.
+         * List the catalogs the caller may see, with their access level
+         * @description Organization administrators see every catalog; other users see the catalogs they hold a role in.
          */
         get: operations["ListCatalogs"];
         put?: never;
-        post?: never;
+        /** Create a catalog (organization administrators only) */
+        post: operations["CreateCatalog"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/{catalogId}/members/{subject}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Grant or change a user's role in a catalog (organization administrators only) */
+        put: operations["SetCatalogMember"];
+        post?: never;
+        /** Remove a user's role in a catalog (organization administrators only) */
+        delete: operations["RemoveCatalogMember"];
         options?: never;
         head?: never;
         patch?: never;
@@ -28,6 +81,18 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description A catalog member as returned to administrators. */
+        CatalogMember: {
+            /** @description Identity-provider subject. */
+            subject: string;
+            /** @description Role name: `editor` or `viewer`. */
+            role: string;
+            /**
+             * Format: date-time
+             * @description When the role was granted (UTC).
+             */
+            grantedAt: string;
+        };
         /** @description Read model returned by catalog queries. */
         CatalogSummary: {
             /**
@@ -42,6 +107,42 @@ export interface components {
              * @description Creation time (UTC).
              */
             createdAt: string;
+            /** @description The caller's access: `admin`, `editor` or `viewer`. */
+            access: string;
+        };
+        /** @description Request to create a catalog. */
+        CreateCatalogRequest: {
+            /** @description Catalog name, 1–200 characters, unique in the organization. */
+            name: string;
+        };
+        /** @description Antiforgery token for the SPA, as returned by `GET /api/v1/antiforgery`. */
+        CsrfToken: {
+            /** @description Value to send in the `X-CSRF-TOKEN` header or the logout form field. */
+            token: string;
+            /** @description Form field name for the logout form. */
+            formFieldName: string;
+        };
+        /** @description The signed-in user, as returned by `GET /api/v1/me`. */
+        CurrentUserInfo: {
+            /** @description Identity-provider subject. */
+            subject: string;
+            /** @description Display name. */
+            name: string;
+            /** @description True for organization administrators. */
+            isOrganizationAdmin: boolean;
+        };
+        ProblemDetails: {
+            type?: null | string;
+            title?: null | string;
+            /** Format: int32 */
+            status?: null | number | string;
+            detail?: null | string;
+            instance?: null | string;
+        };
+        /** @description Request to grant or change a catalog role. */
+        SetCatalogMemberRequest: {
+            /** @description Role: `editor` or `viewer`. */
+            role: string;
         };
     };
     responses: never;
@@ -52,6 +153,55 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    GetMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentUserInfo"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetCsrfToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsrfToken"];
+                };
+            };
+        };
+    };
     ListCatalogs: {
         parameters: {
             query?: never;
@@ -68,6 +218,150 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogSummary"][];
+                };
+            };
+        };
+    };
+    CreateCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCatalogRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogSummary"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SetCatalogMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogId: string;
+                subject: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCatalogMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogMember"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RemoveCatalogMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogId: string;
+                subject: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

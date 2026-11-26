@@ -8,7 +8,7 @@
 | 0004 | [Operating budget and cost model](0004-operating-budget.md) | proposed |
 | 0005 | [Persistence and migrations](0005-persistence.md) | accepted |
 | 0006 | [Asset storage and lifecycle](0006-storage.md) | proposed |
-| 0007 | [Identity and tenant isolation](0007-identity-tenancy.md) | proposed |
+| 0007 | [Identity and tenant isolation](0007-identity-tenancy.md) | accepted |
 | 0008 | [Container runtime and deployment](0008-deployment.md) | proposed |
 | 0009 | [Search implementation](0009-search.md) | proposed |
 | 0010 | [MVP scope and quality baseline](0010-mvp-scope.md) | proposed |

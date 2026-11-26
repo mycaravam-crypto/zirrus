@@ -1,4 +1,5 @@
-using Zirrus.Application.Catalogs;
+using Zirrus.Api.Endpoints;
+using Zirrus.Api.Security;
 using Zirrus.Infrastructure;
 using Zirrus.Infrastructure.Hosting;
 
@@ -10,6 +11,8 @@ if (await HostingExtensions.RunHealthProbeIfRequestedAsync(args) is { } probeExi
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddZirrusSecrets();
 builder.Services.AddZirrusInfrastructure(builder.Configuration);
+builder.Services.AddZirrusSessions(builder.Configuration, builder.Environment);
+builder.AddZirrusAuthentication();
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document, _, _) =>
 {
@@ -19,20 +22,21 @@ builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document,
 }));
 
 var app = builder.Build();
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseAuthentication();
+app.UseAuthorization();
 
-app.MapOpenApi("/openapi/{documentName}.json");
+app.MapOpenApi("/openapi/{documentName}.json").AllowAnonymous();
 app.MapZirrusHealthChecks();
 
-var v1 = app.MapGroup("/api/v1").WithTags("Catalogs");
-
-// Lists catalogs ordered by name. Becomes permission-filtered with catalog roles in W2 (#22).
-v1.MapGet("/catalogs", async (ListCatalogs listCatalogs, CancellationToken cancellationToken) =>
-        TypedResults.Ok(await listCatalogs.ExecuteAsync(cancellationToken)))
-    .WithName("ListCatalogs")
-    .WithSummary("List the catalogs assets are organized in")
-    .WithDescription("Returns all catalogs ordered by name. Until catalog permissions arrive (W2), every catalog is listed.");
+// Every /api route requires a signed-in user and a CSRF token on unsafe methods (security.md).
+var api = app.MapGroup("/api/v1")
+    .RequireAuthorization()
+    .AddEndpointFilter(AuthenticationSetup.ValidateAntiforgery);
+app.MapAccountEndpoints(api);
+api.MapCatalogEndpoints();
 
 await app.RunAsync();
 return 0;
