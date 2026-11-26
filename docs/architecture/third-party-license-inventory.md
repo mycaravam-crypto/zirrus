@@ -7,7 +7,13 @@ Status: preliminary, not a release SBOM. Verify exact package versions, transiti
 | Npgsql, Npgsql EF Core provider | PostgreSQL License | Verify selected packages |
 | NetVips / libvips | MIT / LGPL-2.1-or-later (verify native package) | Review native linkage and bundled codecs |
 | xUnit, Testcontainers for .NET | Apache-2.0; MIT respectively (verify) | Test-only; verify versions |
-| Wolverine, Rebus (queue candidates) | MIT (verify) | Evaluate in ADR 0002 spike |
+| Wolverine, Rebus (queue candidates) | MIT (verify exact packages) | Wolverine first spike; Npgsql consumer fallback |
+| Mapperly / FluentValidation | Apache-2.0 | Optional; prefer direct mapping and built-in validation |
+| Shouldly / NSubstitute | BSD-3-Clause (verify) | Optional test-only |
+| Magick.NET / SkiaSharp | Apache-2.0 / MIT (wrapper; verify native bundles) | Rendering candidates; compare with NetVips |
+| MetadataExtractor | Apache-2.0 (verify) | Metadata candidate; compare with ExifTool |
+| Apache JMeter | Apache-2.0 | Preferred load-test tool; verify plugins |
+| ImageSharp / NBomber v5+ | conditional split license / commercial terms (verify) | Avoid by default |
 | Hangfire, MassTransit v9+, MediatR, AutoMapper, FluentAssertions v8+ | LGPL-3.0 or commercial (verify current terms) | Avoid; see ADR 0003 review list |
 | TypeScript, Node.js (frontend build only) | Apache-2.0; MIT respectively | Notices for shipped bundles only |
 | React, Vite, Tailwind, shadcn/ui, TanStack | MIT (candidate packages) | Verify copied components and transitive dependencies |
@@ -24,8 +30,8 @@ Status: preliminary, not a release SBOM. Verify exact package versions, transiti
 | pnpm | MIT | Verify selected version |
 | OpenTelemetry (.NET, JS) | Apache-2.0 | Verify exporters |
 | OpenSearch (deferred) | Apache-2.0 | Verify plugins |
-| Vitest, Testing Library, Playwright, k6, axe-core, ZAP, Trivy, CycloneDX | Mixed; exact packages TBD | Inventory build/test tooling before adoption; assess k6 AGPL obligations |
+| Vitest, Testing Library, Playwright, k6, axe-core, ZAP, Trivy, CycloneDX | Mixed; exact packages TBD | Inventory build/test tooling before adoption; prefer JMeter; k6 only by reviewed test-tool exception |
 | DocWizz | Apache-2.0 | CI-only tool, not distributed |
 | GitHub Actions / Dependabot | Service terms and individual action licenses | Pin and review actions |
 
-Primary references: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT ; https://github.com/npgsql/npgsql/blob/main/LICENSE ; https://www.libvips.org/ ; https://exiftool.org/ ; https://www.clamav.net/ ; https://www.ffmpeg.org/legal.html ; https://redis.io/legal/licenses/ . Docker references: https://docs.docker.com/engine/ and https://docs.docker.com/subscription-billing/desktop-license/ . Entries marked "verify" are preliminary and must be confirmed against versioned upstream license files. No legal approval claimed.
+Primary references: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT ; https://github.com/npgsql/npgsql/blob/main/LICENSE ; https://www.libvips.org/ ; https://exiftool.org/ ; https://www.clamav.net/ ; https://www.ffmpeg.org/legal.html ; https://redis.io/legal/licenses/ . Docker references: https://docs.docker.com/engine/ and https://docs.docker.com/subscription-billing/desktop-license/ . Entries marked "verify" are preliminary and must be confirmed against versioned upstream license files. No legal approval claimed. See [open-source dependency selection](open-source-dependencies.md) for alternatives and admission evidence.
