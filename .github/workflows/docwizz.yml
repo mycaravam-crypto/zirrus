@@ -1,0 +1,30 @@
+# Documentation quality gate: DocWizz comments on every pull request with the documentation gaps,
+# oversized or dense Markdown, and architecture violations that the change introduces (docwizz check --since).
+# Configuration: docwizz.yaml. Background: epic #1 (cross-cutting conventions) and #11 (CI/CD concept).
+name: docwizz
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write # the action posts one comment and updates it on later pushes
+
+concurrency:
+  group: docwizz-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # check --since needs the pull request's base commit
+          persist-credentials: false
+      # Pinned to a release commit: the action refuses branches and installs the scanner published with that release.
+      - uses: mycaravam-crypto/docwizz@9e6723440386bedc451ff46e2d770c1ab0a3164e # v0.7.143
+        with:
+          path: .
+          fail: 'true'
