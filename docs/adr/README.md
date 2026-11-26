@@ -2,7 +2,7 @@
 
 | ID | Decision | Status |
 |---|---|---|
-| 0001 | [Core application stack](0001-core-stack.md) | proposed |
+| 0001 | [Core application stack](0001-core-stack.md) | accepted |
 | 0002 | [Background job backend](0002-job-backend.md) | proposed |
 | 0003 | [Dependency licensing policy](0003-dependency-policy.md) | proposed |
 | 0004 | [Operating budget and cost model](0004-operating-budget.md) | proposed |

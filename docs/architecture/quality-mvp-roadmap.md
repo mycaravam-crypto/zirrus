@@ -13,7 +13,7 @@ Issues #12, #13, #14. All figures proposed, not measured. Confirm product owner 
 | Q5 | worker crash/retry produces one logical result per stage, no premature publication | fault injection #7 |
 | Q6 | critical workflows WCAG 2.2 AA, zero critical/serious axe findings plus manual keyboard review | Playwright/axe #8 |
 | Q7 | zero unresolved release-blocking security findings; severity and exception approval defined by #9 | SCA, Trivy, ZAP, review |
-| Q8 | >=80% branch coverage in core domain/application modules; all critical acceptance scenarios pass | Vitest/integration/E2E #12 |
+| Q8 | >=80% branch coverage in core domain/application modules; all critical acceptance scenarios pass | xUnit (backend), Vitest (web), integration/E2E #12 |
 | Q9 | failed migration recovery preserves authorized asset access and checksums within RTO/RPO | recovery test #10 |
 | Q10 | audit mutation denied for application identity; digest mismatch detected | security integration #9 |
 
@@ -25,7 +25,7 @@ Must: authenticated catalog-scoped roles; managed image import/quarantine/scan, 
 ## Proposed implementation work packages (not yet native subissues)
 | Work package | Depends on | Acceptance evidence | Rough size |
 |---|---|---|---|
-| W1 walking skeleton/CI | #2/#11 approval | clean Compose boot, CI build | M |
+| W1 walking skeleton/CI (.NET solution + React app) | #2/#11 approval | clean Compose boot, CI build, DocWizz layer rules pass | M |
 | W2 identity/catalog permissions | W1 | Q3 role tests | M |
 | W3 data schema/storage adapter | W1/W2 | migration, round-trip, hashes | M |
 | W4 ingestion worker/scan/preview | W3 | Q2/Q5 pipeline tests | L |
@@ -37,4 +37,4 @@ Must: authenticated catalog-scoped roles; managed image import/quarantine/scan, 
 S/M/L relative sizing only; team to estimate. Create native implementation subissues under #14 after #13 approval. Do not imply release date or owner is assigned.
 
 ## Consolidated review questions
-Confirm proposed frameworks, queue and ORM after validation; single organization vs tenancy; managed filesystem vs S3 provider; formats/limits; Keycloak or existing OIDC; retention; initial workload and thresholds; budget/owner/date; whether Cumulus migration required. Review all ADRs, resolve or formally defer with safe default and owner. PoCs: database metadata/search, storage round trip, ingestion, queue compatibility, Compose and backup/restore. No architecture approval claimed. Walking skeleton exception stays unchanged.
+Backend runtime is decided (ASP.NET Core, ADR 0001). Confirm the PostgreSQL job queue (ADR 0002) and EF Core (ADR 0005) after the validation spike; single organization vs tenancy; managed filesystem vs S3 provider; formats/limits; Keycloak or existing OIDC; retention; initial workload and thresholds; budget/owner/date; whether Cumulus migration required. Review all ADRs, resolve or formally defer with safe default and owner. PoCs: database metadata/search, storage round trip, ingestion, queue compatibility, Compose and backup/restore. No architecture approval claimed. Walking skeleton exception stays unchanged.
