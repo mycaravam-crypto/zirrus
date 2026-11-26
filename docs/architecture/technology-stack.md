@@ -3,9 +3,9 @@
 Status: Proposed | Issue: [#2](https://github.com/mycaravam-crypto/zirrus/issues/2) | Date: 2026-11-26
 
 ## Context and assumptions
-Greenfield Apache-2.0 DAM. Assume a small team, web-first UI, self-hosted reference deployment and incremental delivery; actual team skills, budget and workload remain unconfirmed. No benchmark has been performed. Scores are engineering hypotheses, not measured results.
+Greenfield Apache-2.0 DAM. Assume a small team, web-first UI, self-hosted reference deployment and incremental delivery; actual team skills, budget and workload remain unconfirmed; TypeScript, Node.js and PostgreSQL are confirmed product constraints. No benchmark has been performed. Scores are engineering hypotheses, not measured results.
 
-## Weighted decision matrix
+## Historical weighted decision matrix (superseded as selection mechanism)
 Scale: 1 weak, 5 strong. Weighted total = sum(weight * score)/100. Team skill scores are neutral until confirmed. React is held constant across backend alternatives; frontend selection is a provisional assumption.
 
 | Criterion | Weight | TypeScript/NestJS | Python/FastAPI | Java/Spring Boot |
@@ -19,7 +19,7 @@ Scale: 1 weak, 5 strong. Weighted total = sum(weight * score)/100. Team skill sc
 | Full-stack delivery efficiency | 15 | 5 | 4 | 3 |
 | Weighted score | 100 | 4.10 | 3.95 | 3.80 |
 
-Prefer TypeScript provisionally. Sensitivity: with all other scores unchanged, Python's team skill score increasing from 3 to 4 raises its total to 4.15 versus TypeScript's 4.10. Confirm actual team skills and recalculate before accepting ADR 0001; validate hiring assumptions and measured resource use.
+Product owner decision (2026-11-26): TypeScript, Node.js and PostgreSQL are mandatory. The historical comparison is retained for traceability only; team skills no longer gate language/runtime/database selection. Identify onboarding and training needs instead. Frameworks and versions remain subject to review.
 
 ## Baseline dispositions
 | Layer | Candidate | Disposition |
@@ -49,4 +49,4 @@ No approved budget. See [ADR 0004](../adr/0004-operating-budget.md). Compare mea
 
 ## Evidence and review
 Official references: [Node release schedule](https://github.com/nodejs/Release), [PostgreSQL support](https://www.postgresql.org/support/versioning/), [Valkey support](https://valkey.io/topics/releases/), [BullMQ](https://docs.bullmq.io/), [Redis licensing](https://redis.io/legal/licenses/).
-ADRs: [0001](../adr/0001-core-stack.md), [0002](../adr/0002-job-backend.md), [0003](../adr/0003-dependency-policy.md), [0004](../adr/0004-operating-budget.md). [License inventory](third-party-license-inventory.md). Pending team input, PoCs, dependency checks and PR approval.
+ADRs: [0001](../adr/0001-core-stack.md), [0002](../adr/0002-job-backend.md), [0003](../adr/0003-dependency-policy.md), [0004](../adr/0004-operating-budget.md). [License inventory](third-party-license-inventory.md). Pending onboarding assessment, PoCs, dependency checks and PR approval.
