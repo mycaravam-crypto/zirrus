@@ -46,9 +46,14 @@ services:
     build: { context: .., dockerfile: deploy/docker/api.Dockerfile }
     image: zirrus-api:local
     <<: *hardening
+    environment:
+      # Production: set the identity provider (ADR 0007) and supply Auth__ClientSecret as a secret.
+      Auth__Authority: ${ZIRRUS_OIDC_AUTHORITY:-}
     secrets:
       - source: zirrus_db
         target: ConnectionStrings__Zirrus
+      - source: dataprotection_key
+        target: DataProtection__Key
     networks: [backend, data]
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -103,3 +108,5 @@ secrets:
     file: ./secrets/postgres_password
   zirrus_db:
     file: ./secrets/zirrus_db_connection
+  dataprotection_key:
+    file: ./secrets/dataprotection_key
