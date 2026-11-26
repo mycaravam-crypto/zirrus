@@ -13,7 +13,7 @@ ZIRRUS is Apache-2.0. Distribution may include container images and native binar
 Permissive-only dependencies; permissive-first with reviewed exceptions; unrestricted dependency selection.
 
 ## Proposed decision
-Permissive-first with documented exceptions. Default candidates: MIT, BSD-2/3-Clause, Apache-2.0, ISC, PostgreSQL license.
+First-party APIs first; permissive, maintained open source second; other terms only by documented exception. Default candidates: MIT, BSD-2/3-Clause, Apache-2.0, ISC, PostgreSQL license. Core operation must not require a paid license, registration key, revenue eligibility or vendor service. See [candidate evaluation](../architecture/open-source-dependencies.md).
 
 - Review MPL, LGPL, GPL, AGPL, Artistic and other licenses case by case.
 - Source-available, noncommercial, unknown or incompatible terms block distribution until approved or replaced.
@@ -28,7 +28,11 @@ Several widely used .NET libraries changed to commercial or copyleft terms. Veri
 | Hangfire | core LGPL-3.0, paid Pro features | PostgreSQL queue per ADR 0002 |
 | MassTransit v9+ | commercial license | Wolverine, Rebus or in-house outbox consumer |
 | MediatR, AutoMapper (recent versions) | commercial license | plain application services; Mapperly or hand-written mapping |
-| FluentAssertions v8+ | commercial license | xUnit assertions or Shouldly |
+| FluentAssertions v8+ | noncommercial/community or commercial terms | xUnit assertions or Shouldly |
+| ImageSharp (current split license) | conditional terms | Magick.NET, SkiaSharp, or reviewed NetVips |
+| NBomber v5+ | commercial terms for organizational use | Apache JMeter |
+
+Check exact versions and license expressions, including dual-license choices. Do not pin obsolete versions simply to avoid a license change.
 
 ## Controls
 - Generate an SBOM for pinned runtime and build dependencies (NuGet, npm), OS packages and container images.
