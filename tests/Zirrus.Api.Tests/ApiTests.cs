@@ -270,6 +270,31 @@ public sealed class AuthorizationMatrixTests : IClassFixture<PostgresFixture>, I
         Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
     }
 
+    [Fact]
+    public async Task Category_tree_is_catalog_scoped_and_only_admins_create_nodes()
+    {
+        using var admin = _fixture.Api.ClientAs(Admin);
+        using var editor = _fixture.Api.ClientAs(Editor);
+        using var viewer = _fixture.Api.ClientAs(Viewer);
+        using var outsider = _fixture.Api.ClientAs(Outsider);
+        var path = $"/api/v1/catalogs/{_press.Id}/categories";
+        using var denied = await Api.SendAsync(editor, HttpMethod.Post, path, new { name = "Events" });
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        using var created = await Api.SendAsync(admin, HttpMethod.Post, path, new { name = "Events" });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var root = (await created.Content.ReadFromJsonAsync<CategoryDetails>(Api.Ct))!;
+        using var child = await Api.SendAsync(admin, HttpMethod.Post, path, new { name = "2026", parentId = root.Id });
+        Assert.Equal(HttpStatusCode.Created, child.StatusCode);
+        var nodes = await viewer.GetFromJsonAsync<List<CategoryDetails>>(new Uri(path, UriKind.Relative), Api.Ct);
+        Assert.Contains(nodes!, n => n.ParentId == root.Id && n.Name == "2026");
+        using var duplicate = await Api.SendAsync(admin, HttpMethod.Post, path, new { name = "Events" });
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+        using var foreign = await Api.SendAsync(admin, HttpMethod.Post, $"/api/v1/catalogs/{_archive.Id}/categories", new { name = "Foreign", parentId = root.Id });
+        Assert.Equal(HttpStatusCode.NotFound, foreign.StatusCode);
+        using var hidden = await outsider.GetAsync(new Uri(path, UriKind.Relative), Api.Ct);
+        Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
+    }
+
     private sealed record MeResponse(string Subject, string Name, bool IsOrganizationAdmin);
 }
 
