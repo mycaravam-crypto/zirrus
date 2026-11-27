@@ -7,7 +7,11 @@ import { AssetDetail } from "./AssetDetail";
 import { AssetGrid } from "./AssetGrid";
 import { UploadPanel } from "./UploadPanel";
 
-/** Catalog navigation, asset grid, upload and detail pane (W6 explorer). */
+/**
+ * Catalog navigation, asset grid, upload and detail pane (W6 explorer).
+ * @param props Component props.
+ * @param props.client API client.
+ */
 export function Explorer({ client }: { client: ZirrusClient }) {
   const [catalogId, setCatalogId] = useState<string | null>(null);
   const [assetId, setAssetId] = useState<string | null>(null);
@@ -68,6 +72,11 @@ export function Explorer({ client }: { client: ZirrusClient }) {
   );
 }
 
+/**
+ * Localized access level of a catalog.
+ * @param catalog Catalog with the caller's access.
+ * @returns The label in the UI language.
+ */
 function accessLabel(catalog: CatalogSummary) {
   return t(`catalogs.access.${catalog.access}` as MessageKey);
 }

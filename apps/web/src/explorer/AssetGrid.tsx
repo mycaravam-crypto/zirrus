@@ -7,6 +7,11 @@ import { assetsKey } from "./keys";
 /**
  * Thumbnail grid, newest first, with cursor pagination. Polls every 3 s while any visible asset is
  * still being scanned or processed, so states and thumbnails appear without a reload.
+ * @param props Component props.
+ * @param props.client API client.
+ * @param props.catalogId Catalog to list.
+ * @param props.selected ID of the asset open in the detail pane, if any.
+ * @param props.onSelect Called with an asset ID when a card is chosen.
  */
 export function AssetGrid({
   client,
@@ -70,12 +75,22 @@ export function AssetGrid({
   );
 }
 
+/**
+ * Thumbnail of an active asset, or a placeholder while it is processed.
+ * @param props Component props.
+ * @param props.catalogId Catalog of the asset.
+ * @param props.asset Asset to show.
+ */
 function Thumbnail({ catalogId, asset }: { catalogId: string; asset: AssetSummary }) {
   if (asset.state !== "active") return <span className="thumb placeholder" aria-hidden="true" />;
   return <img className="thumb" src={`${assetPath(catalogId, asset.id)}/renditions/thumbnail`} alt="" loading="lazy" width={160} height={160} />;
 }
 
-/** Localized lifecycle state. */
+/**
+ * Localized lifecycle state.
+ * @param state Lowercase state from the API, e.g. `processing`.
+ * @returns The label in the UI language.
+ */
 export function stateLabel(state: string) {
   return t(`state.${state}` as MessageKey);
 }

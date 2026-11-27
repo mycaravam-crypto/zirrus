@@ -7,7 +7,12 @@ import { assetsKey } from "./keys";
 
 type Status = { name: string; message: string; kind: "progress" | "done" | "error" };
 
-/** Uploads chosen files one after another with progress; editors only. */
+/**
+ * Uploads chosen files one after another with progress; editors only.
+ * @param props Component props.
+ * @param props.client API client.
+ * @param props.catalogId Catalog that receives the uploads.
+ */
 export function UploadPanel({ client, catalogId }: { client: ZirrusClient; catalogId: string }) {
   const queryClient = useQueryClient();
   const inputId = useId();
