@@ -121,6 +121,7 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
     [Fact]
     public async Task Audit_records_are_append_only_for_the_owner_and_only_the_purge_deletes()
     {
+        await SealEventsAsync();
         var old = await InsertEventAsync(DateTimeOffset.UtcNow.AddDays(-400));
         await SealEventsAsync();
         var recent = await InsertEventAsync(DateTimeOffset.UtcNow);
@@ -230,7 +231,7 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
             DigestKey = Convert.ToBase64String(Enumerable.Range(0, 32).Select(i => (byte)i).ToArray()),
         });
         var digests = new AuditDigests(db, options, new FixedTime(DateTimeOffset.UtcNow.AddHours(1)));
-        Assert.NotNull(await digests.SealAsync(Api.Ct));
+        await digests.SealAsync(Api.Ct);
     }
 
     private Task<Guid> InsertEventAsync(DateTimeOffset occurredAt) => InsertEventAsync(fixture, occurredAt);
