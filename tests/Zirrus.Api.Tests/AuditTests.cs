@@ -340,7 +340,7 @@ public sealed class AuditDigestTests(PostgresFixture fixture) : IClassFixture<Po
             ALTER TABLE audit_events ENABLE TRIGGER audit_events_append_only;
             """);
 
-        var result = Assert.Single((await digests.VerifyAsync(100, Api.Ct)).Where(r => r.DigestId == digest!.Id));
+        var result = Assert.Single(await digests.VerifyAsync(100, Api.Ct), r => r.DigestId == digest!.Id);
         Assert.Equal(DigestStatus.Mismatch, result.Status);
         Assert.InRange(firstSequence, digest!.FromSeq, digest.ToSeq);
     }
