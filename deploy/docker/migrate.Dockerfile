@@ -11,6 +11,9 @@ RUN dotnet ef migrations bundle -p src/Zirrus.Infrastructure -s src/Zirrus.Infra
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled@sha256:2bb1d484500b032aaafb75e876ffbea135b969d6259cacfcbf18a793e5d6e6ec
 WORKDIR /app
 COPY --from=build /out/efbundle ./efbundle
+# The single-file bundle extracts its native libraries (SkiaSharp, via Zirrus.Infrastructure) at
+# startup; the root filesystem is read-only, so extract to the tmpfs Compose mounts at /tmp.
+ENV DOTNET_BUNDLE_EXTRACT_BASE_DIR=/tmp
 USER app
 LABEL org.opencontainers.image.source="https://github.com/mycaravam-crypto/zirrus" \
       org.opencontainers.image.licenses="Apache-2.0" \
