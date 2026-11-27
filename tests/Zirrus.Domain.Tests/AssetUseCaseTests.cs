@@ -271,7 +271,7 @@ public sealed class AssetUseCaseTests
         public Task<Rendition?> FindRenditionAsync(Guid assetId, string kind, CancellationToken cancellationToken) =>
             Task.FromResult<Rendition?>(null);
 
-        public Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken) =>
+        public Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken, AssetSearchFilter? filter = null) =>
             Task.FromResult<IReadOnlyList<AssetSummary>>(Items
                 .Where(a => a.CatalogId == catalogId && (!activeOnly || a.State == AssetState.Active))
                 .Where(a => after is not { } p || a.CreatedAt < p.CreatedAt || (a.CreatedAt == p.CreatedAt && a.Id.CompareTo(p.Id) < 0))
