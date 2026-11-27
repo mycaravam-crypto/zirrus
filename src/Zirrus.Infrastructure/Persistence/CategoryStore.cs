@@ -16,6 +16,10 @@ internal sealed class CategoryStore(ZirrusDbContext db) : ICategoryStore
             .OrderBy(c => c.Name).ThenBy(c => c.Id).ToListAsync(cancellationToken);
 
     /// <inheritdoc />
+    public Task<Category?> FindCategoryAsync(Guid organizationId, Guid catalogId, Guid categoryId, CancellationToken cancellationToken) =>
+        db.Set<Category>().AsNoTracking().SingleOrDefaultAsync(c => c.OrganizationId == organizationId && c.CatalogId == catalogId && c.Id == categoryId, cancellationToken);
+
+    /// <inheritdoc />
     public Task<Catalog?> FindCatalogAsync(Guid organizationId, Guid catalogId, CancellationToken cancellationToken) =>
         db.Catalogs.AsNoTracking().SingleOrDefaultAsync(c => c.OrganizationId == organizationId && c.Id == catalogId, cancellationToken);
 
@@ -40,11 +44,21 @@ internal sealed class CategoryStore(ZirrusDbContext db) : ICategoryStore
     }
 
     /// <inheritdoc />
-    public async Task AssignAsync(AssetCategory assignment, CancellationToken cancellationToken)
+    public async Task<bool> AssignAsync(AssetCategory assignment, CancellationToken cancellationToken)
     {
-        // Composite foreign keys enforce that both resources belong to the same catalog.
+        // Lock the active asset until commit: a concurrent deletion cannot pass the state check.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var active = await db.Assets.FromSqlInterpolated($"SELECT * FROM assets WHERE catalog_id = {assignment.CatalogId} AND id = {assignment.AssetId} AND state = 'Active' FOR UPDATE")
+            .AsNoTracking().ToListAsync(cancellationToken);
+        if (active.Count == 0)
+        {
+            return false;
+        }
+
         await db.Database.ExecuteSqlInterpolatedAsync(
             $"INSERT INTO asset_categories (catalog_id, asset_id, category_id, assigned_at) VALUES ({assignment.CatalogId}, {assignment.AssetId}, {assignment.CategoryId}, {assignment.AssignedAt}) ON CONFLICT (asset_id, category_id) DO NOTHING",
             cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return true;
     }
 }
