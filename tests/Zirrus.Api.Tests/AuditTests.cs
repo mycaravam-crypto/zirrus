@@ -176,6 +176,9 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
             "SELECT audit_purge(now())",
             "DELETE FROM \"__EFMigrationsHistory\"",
             "DROP TABLE audit_events",
+            "CREATE TABLE public.audit_probe (id integer)",
+            "ALTER TABLE audit_events ADD COLUMN privilege_probe text",
+            "GRANT SELECT ON audit_events TO PUBLIC",
         })
         {
             var error = await Assert.ThrowsAsync<PostgresException>(() => Execute(app, sql));
@@ -320,7 +323,7 @@ public sealed class AuditDigestTests(PostgresFixture fixture) : IClassFixture<Po
     {
         var digests = Digests(DateTimeOffset.UtcNow.AddHours(1));
         await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddDays(-400));
-        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-30));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddDays(-401));
         var first = await digests.SealAsync(Api.Ct);
         Assert.NotNull(first);
         var target = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-20));
@@ -348,6 +351,98 @@ public sealed class AuditDigestTests(PostgresFixture fixture) : IClassFixture<Po
         // The retention purge removes the oldest events: reported as purged, not as tampering.
         await AuditTests.Execute(owner, "SELECT audit_purge(now() - interval '365 days')");
         Assert.Equal(DigestStatus.Purged, (await digests.VerifyAsync(10, Api.Ct))[0].Status);
+    }
+
+    /// <summary>An internal deletion in a sealed range is detected without relying on a leading-prefix check.</summary>
+    [Fact]
+    public async Task Digests_detect_removed_internal_events_without_purge_evidence()
+    {
+        var digests = Digests(DateTimeOffset.UtcNow.AddHours(1));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-30));
+        var removed = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-20));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-10));
+        Assert.NotNull(await digests.SealAsync(Api.Ct));
+
+        await using var owner = new NpgsqlConnection(fixture.ConnectionString);
+        await owner.OpenAsync(Api.Ct);
+        await AuditTests.Execute(owner, $"""
+            ALTER TABLE audit_events DISABLE TRIGGER audit_events_append_only;
+            DELETE FROM audit_events WHERE id = '{removed}';
+            ALTER TABLE audit_events ENABLE TRIGGER audit_events_append_only;
+            """);
+
+        Assert.Equal(DigestStatus.Mismatch, Assert.Single(await digests.VerifyAsync(1, Api.Ct)).Status);
+    }
+
+    /// <summary>Changing sequence order inside a sealed range invalidates its digest.</summary>
+    [Fact]
+    public async Task Digests_detect_reordered_events()
+    {
+        var digests = Digests(DateTimeOffset.UtcNow.AddHours(1));
+        var first = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-20));
+        var second = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-10));
+        Assert.NotNull(await digests.SealAsync(Api.Ct));
+
+        long firstSeq;
+        long secondSeq;
+        await using (var db = fixture.CreateContext())
+        {
+            firstSeq = await db.Set<AuditEvent>().Where(e => e.Id == first).Select(e => e.Seq).SingleAsync(Api.Ct);
+            secondSeq = await db.Set<AuditEvent>().Where(e => e.Id == second).Select(e => e.Seq).SingleAsync(Api.Ct);
+        }
+
+        await using var owner = new NpgsqlConnection(fixture.ConnectionString);
+        await owner.OpenAsync(Api.Ct);
+        await AuditTests.Execute(owner, $"""
+            ALTER TABLE audit_events DISABLE TRIGGER audit_events_append_only;
+            UPDATE audit_events SET seq = -1 WHERE id = '{first}';
+            UPDATE audit_events SET seq = {firstSeq} WHERE id = '{second}';
+            UPDATE audit_events SET seq = {secondSeq} WHERE id = '{first}';
+            ALTER TABLE audit_events ENABLE TRIGGER audit_events_append_only;
+            """);
+
+        Assert.Equal(DigestStatus.Mismatch, Assert.Single(await digests.VerifyAsync(1, Api.Ct)).Status);
+    }
+
+    /// <summary>Changing a sealed digest's range and event count cannot make a truncated range verify.</summary>
+    [Fact]
+    public async Task Digests_detect_truncated_ranges()
+    {
+        var digests = Digests(DateTimeOffset.UtcNow.AddHours(1));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-20));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-10));
+        var digest = await digests.SealAsync(Api.Ct);
+        Assert.NotNull(digest);
+
+        await using var owner = new NpgsqlConnection(fixture.ConnectionString);
+        await owner.OpenAsync(Api.Ct);
+        await AuditTests.Execute(owner, $"""
+            ALTER TABLE audit_digests DISABLE TRIGGER audit_digests_append_only;
+            UPDATE audit_digests
+            SET to_seq = from_seq, event_count = 1
+            WHERE id = '{digest.Id}';
+            ALTER TABLE audit_digests ENABLE TRIGGER audit_digests_append_only;
+            """);
+
+        Assert.Equal(DigestStatus.Mismatch, Assert.Single(await digests.VerifyAsync(1, Api.Ct)).Status);
+    }
+
+    /// <summary>Retention leaves a partially expired digest intact so every event remains verifiable.</summary>
+    [Fact]
+    public async Task Retention_does_not_partially_purge_a_digest_range()
+    {
+        var digests = Digests(DateTimeOffset.UtcNow.AddHours(1));
+        var old = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddDays(-400));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-10));
+        Assert.NotNull(await digests.SealAsync(Api.Ct));
+
+        await using var owner = new NpgsqlConnection(fixture.ConnectionString);
+        await owner.OpenAsync(Api.Ct);
+        await AuditTests.Execute(owner, "SELECT audit_purge(now() - interval '365 days')");
+
+        await using var db = fixture.CreateContext();
+        Assert.Equal(1, await db.Set<AuditEvent>().CountAsync(e => e.Id == old, Api.Ct));
+        Assert.Equal(DigestStatus.Valid, Assert.Single(await digests.VerifyAsync(1, Api.Ct)).Status);
     }
 
     private AuditDigests Digests(DateTimeOffset now, string? key = null) =>
