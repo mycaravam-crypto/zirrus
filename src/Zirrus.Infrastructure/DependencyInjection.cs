@@ -7,9 +7,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Zirrus.Application.Assets;
 using Zirrus.Application.Identity;
+using Zirrus.Application.Ingestion;
 using Zirrus.Application.Catalogs;
 using Zirrus.Application.Storage;
 using Zirrus.Infrastructure.Identity;
+using Zirrus.Infrastructure.Ingestion;
 using Zirrus.Infrastructure.Persistence;
 using Zirrus.Infrastructure.Storage;
 
@@ -61,9 +63,33 @@ public static class DependencyInjection
         services.AddScoped<AssetUseCases>();
         services.AddScoped<IStorageInventory, StorageInventory>();
         services.AddScoped<ReconcileStorage>();
+        services.AddScoped<IIngestionStore, IngestionStore>();
+        services.AddScoped<UploadAsset>();
+        services.AddScoped<RetryAsset>();
         services.AddHostedService<OrganizationBootstrap>();
         services.AddZirrusBlobStore(configuration);
         services.AddHealthChecks().AddDbContextCheck<ZirrusDbContext>("database", tags: ["ready"]);
+        return services;
+    }
+
+    /// <summary>
+    /// Adds the ingestion pipeline for the worker: the PostgreSQL job queue, ClamAV scanner
+    /// (<c>Scanner</c> section), SkiaSharp renderer and the metadata extractor.
+    /// </summary>
+    /// <param name="services">Service collection.</param>
+    /// <param name="configuration">Application configuration.</param>
+    /// <returns>The service collection.</returns>
+    public static IServiceCollection AddZirrusIngestion(this IServiceCollection services, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        services.AddSingleton(_ => Npgsql.NpgsqlDataSource.Create(
+            configuration.GetConnectionString(ConnectionStringName)
+            ?? throw new InvalidOperationException($"Connection string '{ConnectionStringName}' is not configured.")));
+        services.AddSingleton<IJobQueue, NpgsqlJobQueue>();
+        services.AddSingleton<IMalwareScanner>(_ => new ClamAvScanner(configuration.GetSection("Scanner").Get<ClamAvOptions>() ?? new ClamAvOptions()));
+        services.AddSingleton<IImageRenderer, SkiaImageRenderer>();
+        services.AddSingleton<IMetadataExtractor, NoMetadataExtractor>(); // MetadataExtractor awaits the XmpCore review (#20)
+        services.AddScoped<IngestionPipeline>();
         return services;
     }
 

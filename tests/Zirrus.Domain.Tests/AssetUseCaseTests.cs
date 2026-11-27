@@ -163,7 +163,7 @@ public sealed class AssetUseCaseTests
             "admin" => new CurrentUser("alice", "Alice", IsOrganizationAdmin: true),
             _ => new CurrentUser(who, who, IsOrganizationAdmin: false),
         };
-        return new AssetUseCases(_assets, new CatalogAccess(_roles, new StaticUser(user), Organization), new FixedTime(Now));
+        return new AssetUseCases(_assets, new CatalogAccess(_roles, new StaticUser(user), Organization), new FixedTime(Now), new Blobs());
     }
 
     private sealed class Roles : ICatalogReader
@@ -192,6 +192,9 @@ public sealed class AssetUseCaseTests
 
         public Task<Asset?> FindAsync(Guid catalogId, Guid assetId, CancellationToken cancellationToken) =>
             Task.FromResult(Items.SingleOrDefault(a => a.CatalogId == catalogId && a.Id == assetId));
+
+        public Task<Rendition?> FindRenditionAsync(Guid assetId, string kind, CancellationToken cancellationToken) =>
+            Task.FromResult<Rendition?>(null);
 
         public Task<bool> TrySaveChangesAsync(CancellationToken cancellationToken)
         {

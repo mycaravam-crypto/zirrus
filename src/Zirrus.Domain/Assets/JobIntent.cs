@@ -25,8 +25,8 @@ public sealed class JobIntent
     /// <summary>Maximum length of a stage name.</summary>
     public const int MaxStageLength = 32;
 
-    /// <summary>Default attempts before dead-lettering.</summary>
-    public const int DefaultMaxAttempts = 5;
+    /// <summary>Default attempts before dead-lettering: the first try plus three retries (ingestion-api-ui.md).</summary>
+    public const int DefaultMaxAttempts = 4;
 
     // Materialization constructor for the persistence layer.
     private JobIntent()

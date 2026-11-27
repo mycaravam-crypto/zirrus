@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""End-to-end sign-in test through Caddy, the API and Keycloak (W2 #22, Keycloak verification #19).
+"""End-to-end test through Caddy, the API, Keycloak, the worker and ClamAV.
+
+Covers sign-in (W2 #22, Keycloak verification #19) and ingestion (W4 #24): an editor uploads a
+JPEG, the worker scans it with the real clamd and renders it, and the renditions are served.
 
 Runs on the CI runner against `docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml`.
 Requires "127.0.0.1 keycloak" in /etc/hosts so the browser and the API use the same issuer URL.
@@ -7,8 +10,10 @@ Test-only users and passwords come from deploy/keycloak/zirrus-realm.json.
 """
 import html
 import json
+import pathlib
 import re
 import sys
+import time
 import uuid
 
 import requests
@@ -80,6 +85,30 @@ check("editor cannot create catalogs", api(erin, "POST", "/api/v1/catalogs", {"n
 
 # requests files cookies of a dotless host under "localhost.local", so look the cookie up by name
 # and replay it in an explicit header from a fresh client (a stolen-cookie scenario).
+# Ingestion (W4): upload as editor, wait for scan + render (ClamAV may still be loading signatures).
+fixture = pathlib.Path(__file__).with_name("fixtures") / "gradient-640x480.jpg"
+upload = erin.post(f"{SITE}/api/v1/catalogs/{catalog_id}/assets",
+                   files={"file": ("gradient.jpg", fixture.read_bytes(), "image/jpeg")},
+                   headers={"X-CSRF-TOKEN": csrf(erin)["token"]})
+check("editor uploads a JPEG into quarantine", upload.status_code == 201 and upload.json()["asset"]["state"] == "quarantined",
+      f"{upload.status_code} {upload.text[:120]}")
+asset_path = f"/api/v1/catalogs/{catalog_id}/assets/{upload.json()['asset']['id']}" if upload.status_code == 201 else None
+state, deadline = None, time.monotonic() + 480
+while asset_path and time.monotonic() < deadline:
+    state = erin.get(f"{SITE}{asset_path}").json()["state"]
+    if state not in ("quarantined", "processing"):
+        break
+    time.sleep(5)
+check("worker scans with ClamAV and renders: asset becomes active", state == "active", state)
+if state == "active":
+    thumb = erin.get(f"{SITE}{asset_path}/renditions/thumbnail")
+    check("thumbnail is served as private WebP", thumb.status_code == 200 and thumb.headers.get("content-type") == "image/webp"
+          and "no-store" in thumb.headers.get("cache-control", ""), thumb.headers)
+    part = erin.get(f"{SITE}{asset_path}/content", headers={"Range": "bytes=0-1"})
+    check("original supports range requests", part.status_code == 206 and part.content == b"\xff\xd8", part.status_code)
+check("non-image upload is refused (415)", erin.post(f"{SITE}/api/v1/catalogs/{catalog_id}/assets",
+      files={"file": ("x.jpg", b"not an image", "image/jpeg")}, headers={"X-CSRF-TOKEN": csrf(erin)["token"]}).status_code == 415)
+
 session_cookie = next((c.value for c in erin.cookies if c.name == "zirrus.session"), "")
 check("browser holds a session cookie", len(session_cookie) > 0)
 copy = requests.Session()

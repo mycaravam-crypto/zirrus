@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Zirrus.Application.Catalogs;
+using Zirrus.Application.Storage;
 using Zirrus.Domain.Assets;
 
 namespace Zirrus.Application.Assets;
@@ -51,18 +52,31 @@ public sealed record AssetDetails(
 /// <summary>Port for loading and saving assets; implemented by the infrastructure layer.</summary>
 public interface IAssetStore
 {
-    /// <summary>Finds an asset in a catalog.</summary>
+    /// <summary>Loads an asset for change tracking, matching both catalog and ID so a foreign catalog ID never resolves it.</summary>
     /// <param name="catalogId">Catalog.</param>
     /// <param name="assetId">Asset.</param>
     /// <param name="cancellationToken">Cancels the lookup.</param>
     /// <returns>The tracked asset, or null.</returns>
     Task<Asset?> FindAsync(Guid catalogId, Guid assetId, CancellationToken cancellationToken);
 
+    /// <summary>Finds a rendition of an asset.</summary>
+    /// <param name="assetId">Asset.</param>
+    /// <param name="kind">Rendition kind.</param>
+    /// <param name="cancellationToken">Cancels the lookup.</param>
+    /// <returns>The rendition, or null.</returns>
+    Task<Rendition?> FindRenditionAsync(Guid assetId, string kind, CancellationToken cancellationToken);
+
     /// <summary>Commits changes to tracked assets, checking the revision each was loaded with.</summary>
     /// <param name="cancellationToken">Cancels the save.</param>
     /// <returns>False when another writer changed the row first (optimistic concurrency).</returns>
     Task<bool> TrySaveChangesAsync(CancellationToken cancellationToken);
 }
+
+/// <summary>An open download: content, its type and a file name for <c>Content-Disposition</c>.</summary>
+/// <param name="Read">Blob read (possibly a range); the caller disposes it.</param>
+/// <param name="MediaType">Content type.</param>
+/// <param name="FileName">Download file name.</param>
+public sealed record AssetContent(BlobRead Read, string MediaType, string FileName);
 
 /// <summary>
 /// Asset reads and metadata edits with catalog permission checks. Viewers see only active assets;
@@ -71,7 +85,8 @@ public interface IAssetStore
 /// <param name="assets">Asset port.</param>
 /// <param name="access">Catalog permission checks.</param>
 /// <param name="time">Time source.</param>
-public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, TimeProvider time)
+/// <param name="blobs">Blob store for downloads.</param>
+public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, TimeProvider time, IBlobStore blobs)
 {
     private const string NotFound = "Asset not found.";
 
@@ -152,5 +167,52 @@ public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, Time
         return await assets.TrySaveChangesAsync(cancellationToken)
             ? OperationResult.Ok(AssetDetails.From(asset))
             : OperationResult.Fail<AssetDetails>(OperationStatus.PreconditionFailed, "The asset was changed by another request.");
+    }
+
+    /// <summary>Opens the original of an active asset, optionally a byte range (HTTP Range).</summary>
+    /// <param name="catalogId">Catalog.</param>
+    /// <param name="assetId">Asset.</param>
+    /// <param name="range">Requested range, or null.</param>
+    /// <param name="cancellationToken">Cancels the open.</param>
+    /// <returns>The content, or NotFound; only active assets are ever served (ADR 0006).</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The range is not satisfiable.</exception>
+    public async Task<OperationResult<AssetContent>> OpenOriginalAsync(Guid catalogId, Guid assetId, ByteRange? range, CancellationToken cancellationToken)
+    {
+        var asset = await FindActiveAsync(catalogId, assetId, cancellationToken);
+        var read = asset is null ? null : await blobs.OpenAsync(BlobKey.Parse(asset.OriginalKey), range, cancellationToken);
+        return read is null
+            ? OperationResult.Fail<AssetContent>(OperationStatus.NotFound, NotFound)
+            : OperationResult.Ok(new AssetContent(read, asset!.MediaType, asset.FileName));
+    }
+
+    /// <summary>Opens a rendition of an active asset.</summary>
+    /// <param name="catalogId">Catalog.</param>
+    /// <param name="assetId">Asset.</param>
+    /// <param name="kind">Rendition kind, e.g. <c>thumbnail</c>.</param>
+    /// <param name="cancellationToken">Cancels the open.</param>
+    /// <returns>The content, or NotFound.</returns>
+    public async Task<OperationResult<AssetContent>> OpenRenditionAsync(Guid catalogId, Guid assetId, string kind, CancellationToken cancellationToken)
+    {
+        var asset = await FindActiveAsync(catalogId, assetId, cancellationToken);
+        var rendition = asset is null ? null : await assets.FindRenditionAsync(asset.Id, kind, cancellationToken);
+        var read = rendition is null ? null : await blobs.OpenAsync(BlobKey.Parse(rendition.StorageKey), null, cancellationToken);
+        if (read is null)
+        {
+            return OperationResult.Fail<AssetContent>(OperationStatus.NotFound, "Rendition not found.");
+        }
+
+        var extension = rendition!.MediaType == "image/webp" ? "webp" : "jpg";
+        return OperationResult.Ok(new AssetContent(read, rendition.MediaType, $"{Path.GetFileNameWithoutExtension(asset!.FileName)}-{kind}.{extension}"));
+    }
+
+    private async Task<Asset?> FindActiveAsync(Guid catalogId, Guid assetId, CancellationToken cancellationToken)
+    {
+        if (!await access.CanReadAsync(catalogId, cancellationToken))
+        {
+            return null;
+        }
+
+        var asset = await assets.FindAsync(catalogId, assetId, cancellationToken);
+        return asset?.State == AssetState.Active ? asset : null;
     }
 }

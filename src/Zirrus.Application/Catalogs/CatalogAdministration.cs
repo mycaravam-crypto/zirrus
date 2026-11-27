@@ -6,7 +6,7 @@ namespace Zirrus.Application.Catalogs;
 /// <summary>Port for changing catalogs and memberships; implemented by the infrastructure layer.</summary>
 public interface ICatalogStore
 {
-    /// <summary>Finds a catalog of the organization.</summary>
+    /// <summary>Loads a catalog scoped to the organization; another organization's catalog resolves to null.</summary>
     /// <param name="organizationId">Organization.</param>
     /// <param name="catalogId">Catalog.</param>
     /// <param name="cancellationToken">Cancels the lookup.</param>
