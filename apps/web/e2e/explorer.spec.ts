@@ -67,6 +67,35 @@ test("editor journey: upload, processing, detail, metadata, download, logout", a
   await expect(pane.getByText("Metadata saved.")).toBeVisible();
   await expectAccessible(page, "asset detail with metadata form");
 
+  // Categories: the administrator creates one in the navigation and assigns the asset to it.
+  const categoriesNav = page.getByRole("navigation", { name: "Categories" });
+  await page.getByRole("button", { name: "New category" }).click();
+  await page.getByRole("textbox", { name: "Category name" }).fill("Harbour views");
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await expect(page.getByText("Category Harbour views created.")).toBeVisible();
+  await pane.getByRole("combobox", { name: "Add to category" }).click(); // the label also names the listbox
+  await pane.getByRole("option", { name: "Harbour views" }).click();
+  await expect(pane.getByRole("button", { name: "Remove from Harbour views" })).toBeVisible();
+  await expectAccessible(page, "asset detail with categories");
+
+  // Search: the saved title is found (stemmed), an unrelated term is not.
+  const searchBox = page.getByRole("searchbox", { name: "Search assets" });
+  await searchBox.fill("harbours");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(card).toBeVisible();
+  await searchBox.fill("zebra crossing");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page.getByText("No matching assets.")).toBeVisible();
+  await searchBox.fill("");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+
+  // Filtering by the category shows the assigned asset and its count.
+  await categoriesNav.getByRole("button", { name: /^Harbour views/ }).click();
+  await expect(page.getByText("Showing assets in Harbour views")).toBeVisible();
+  await expect(card).toBeVisible();
+  await expectAccessible(page, "grid filtered by category");
+  await page.getByRole("button", { name: "Show all assets" }).click();
+
   const [download] = await Promise.all([page.waitForEvent("download"), pane.getByRole("link", { name: "Download original" }).click()]);
   expect(download.suggestedFilename()).toBe("gradient-640x480.jpg");
 

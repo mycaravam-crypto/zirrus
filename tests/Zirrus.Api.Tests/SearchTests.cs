@@ -137,6 +137,52 @@ public sealed class SearchTests(PostgresFixture fixture) : IClassFixture<Postgre
         }
     }
 
+    /// <summary>Editors assign and remove categories; readers list them; viewers cannot change them.</summary>
+    [Fact]
+    public async Task Asset_categories_are_listed_assigned_and_removed_by_role()
+    {
+        var catalog = await Seed.CatalogAsync(fixture, ("erin", CatalogRole.Editor), ("victor", CatalogRole.Viewer));
+        var asset = await SeedAsync(catalog, "{}");
+        var category = await CategoryAsync(catalog, "Harbour", await SeedAsync(catalog, "{}"));
+        var path = $"/api/v1/catalogs/{catalog.Id}/assets/{asset.Id}/categories";
+        using var erin = fixture.Api.ClientAs("erin");
+        using var victor = fixture.Api.ClientAs("victor");
+        using var oscar = fixture.Api.ClientAs("oscar");
+
+        Assert.Empty((await victor.GetFromJsonAsync<JsonElement>(Url(path), Api.Ct)).EnumerateArray());
+        using (var denied = await Api.SendAsync(victor, HttpMethod.Put, $"{path}/{category.Id}"))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        }
+
+        using (var assigned = await Api.SendAsync(erin, HttpMethod.Put, $"{path}/{category.Id}"))
+        {
+            Assert.Equal(HttpStatusCode.OK, assigned.StatusCode);
+        }
+
+        var listed = await victor.GetFromJsonAsync<JsonElement>(Url(path), Api.Ct);
+        Assert.Equal(category.Id, Assert.Single(listed.EnumerateArray()).GetProperty("id").GetGuid());
+        using (var hidden = await oscar.GetAsync(Url(path), Api.Ct))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
+        }
+
+        using (var forbidden = await Api.SendAsync(victor, HttpMethod.Delete, $"{path}/{category.Id}"))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+        }
+
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            using var removed = await Api.SendAsync(erin, HttpMethod.Delete, $"{path}/{category.Id}");
+            Assert.Equal(HttpStatusCode.OK, removed.StatusCode);
+            Assert.Empty((await removed.Content.ReadFromJsonAsync<JsonElement>(Api.Ct)).EnumerateArray());
+        }
+
+        using var withoutCsrf = await Api.SendAsync(erin, HttpMethod.Delete, $"{path}/{category.Id}", csrf: false);
+        Assert.Equal(HttpStatusCode.BadRequest, withoutCsrf.StatusCode);
+    }
+
     private static Uri Url(string path) => new(path, UriKind.Relative);
 
     private async Task<Asset> SeedAsync(Catalog catalog, string metadataJson, AssetState state = AssetState.Active)

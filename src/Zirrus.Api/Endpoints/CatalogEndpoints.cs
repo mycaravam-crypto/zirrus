@@ -82,6 +82,23 @@ internal static class CatalogEndpoints
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
+        catalogs.MapGet("/{catalogId:guid}/assets/{assetId:guid}/categories",
+                async (Guid catalogId, Guid assetId, CategoryManagement categories, CancellationToken cancellationToken) =>
+                    ToHttp(await categories.ListForAssetAsync(catalogId, assetId, cancellationToken)))
+            .WithName("ListAssetCategories")
+            .WithSummary("List the categories an asset is assigned to")
+            .Produces<IReadOnlyList<CategoryDetails>>()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        catalogs.MapDelete("/{catalogId:guid}/assets/{assetId:guid}/categories/{categoryId:guid}",
+                async (Guid catalogId, Guid assetId, Guid categoryId, CategoryManagement categories, CancellationToken cancellationToken) =>
+                    ToHttp(await categories.UnassignAsync(catalogId, assetId, categoryId, cancellationToken)))
+            .WithName("UnassignAssetCategory")
+            .WithSummary("Remove an asset from a category (editors); returns the remaining categories")
+            .Produces<IReadOnlyList<CategoryDetails>>()
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         // Creates a catalog; organization administrators only.
         admin.MapPost("/", async (CreateCatalogRequest request, CatalogAdministration administration, CancellationToken cancellationToken) =>
                 ToHttp(await administration.CreateCatalogAsync(request.Name, cancellationToken), created: c => $"/api/v1/catalogs/{c.Id}"))

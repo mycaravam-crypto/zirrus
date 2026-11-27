@@ -168,6 +168,23 @@ public sealed class CatalogAccessTests
         Assert.Equal(OperationStatus.NotFound, (await Service(Editor).AssignAsync(_press.Id, asset.Id, root.Id, ct)).Status);
         store.RejectAssignment = false;
         Assert.Equal(OperationStatus.Ok, (await Service(Editor).AssignAsync(_press.Id, asset.Id, root.Id, ct)).Status);
+        Assert.Equal(OperationStatus.Ok, (await Service(Editor).AssignAsync(_press.Id, asset.Id, child.Id, ct)).Status);
+
+        // Listing: readers of the catalog see the active asset's categories; outsiders and unknown assets get 404.
+        Assert.Equal(["Child", "Root"], (await Service(Viewer).ListForAssetAsync(_press.Id, asset.Id, ct)).Value!.Select(c => c.Name));
+        Assert.Equal(OperationStatus.NotFound, (await Service(Outsider).ListForAssetAsync(_press.Id, asset.Id, ct)).Status);
+        Assert.Equal(OperationStatus.NotFound, (await Service(Viewer).ListForAssetAsync(_press.Id, Guid.NewGuid(), ct)).Status);
+
+        // Removal: editors only; idempotent; returns what remains.
+        Assert.Equal(OperationStatus.NotFound, (await Service(Outsider).UnassignAsync(_press.Id, asset.Id, root.Id, ct)).Status);
+        Assert.Equal(OperationStatus.Forbidden, (await Service(Viewer).UnassignAsync(_press.Id, asset.Id, root.Id, ct)).Status);
+        Assert.Equal(OperationStatus.NotFound, (await Service(Editor).UnassignAsync(_press.Id, Guid.NewGuid(), root.Id, ct)).Status);
+        Assert.Equal(["Child"], (await Service(Editor).UnassignAsync(_press.Id, asset.Id, root.Id, ct)).Value!.Select(c => c.Name));
+        Assert.Equal(["Child"], (await Service(Editor).UnassignAsync(_press.Id, asset.Id, root.Id, ct)).Value!.Select(c => c.Name));
+
+        // A viewer cannot see the categories of an asset that is no longer active.
+        asset.MarkForDeletion(Now);
+        Assert.Equal(OperationStatus.NotFound, (await Service(Viewer).ListForAssetAsync(_press.Id, asset.Id, ct)).Status);
     }
 
     private sealed class SchemaMemory(Catalog catalog) : ISchemaStore
@@ -204,7 +221,20 @@ public sealed class CatalogAccessTests
             _nodes.Add(category);
             return Task.FromResult(true);
         }
-        public Task<bool> AssignAsync(AssetCategory assignment, CancellationToken cancellationToken) => Task.FromResult(!RejectAssignment);
+        public HashSet<Guid> Assigned { get; } = [];
+        public Task<bool> AssignAsync(AssetCategory assignment, CancellationToken cancellationToken)
+        {
+            if (RejectAssignment) return Task.FromResult(false);
+            Assigned.Add(assignment.CategoryId);
+            return Task.FromResult(true);
+        }
+        public Task<IReadOnlyList<Category>> ListForAssetAsync(Guid catalogId, Guid assetId, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<Category>>(_nodes.Where(c => Asset?.Id == assetId && Assigned.Contains(c.Id)).OrderBy(c => c.Name).ToList());
+        public Task UnassignAsync(Guid catalogId, Guid assetId, Guid categoryId, CancellationToken cancellationToken)
+        {
+            Assigned.Remove(categoryId);
+            return Task.CompletedTask;
+        }
     }
 
     private Task<IReadOnlyList<CatalogSummary>> List(CurrentUser? user) =>

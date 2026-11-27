@@ -7,6 +7,7 @@ import { ApiError, assetPath, csrfToken, formatBytes, pendingStates, problemTitl
 import { t } from "../i18n";
 import { stateColor, stateLabel } from "./AssetGrid";
 import { assetKey, assetsKey } from "./keys";
+import { AssetCategories } from "./AssetCategories";
 import { MetadataEditor } from "./MetadataEditor";
 
 /**
@@ -177,6 +178,8 @@ export function AssetDetail({
           )}
           <Divider />
           <MetadataEditor client={client} catalogId={catalogId} asset={asset.data} canEdit={canEdit} />
+          <Divider />
+          <AssetCategories client={client} catalogId={catalogId} assetId={assetId} active={asset.data.state === "active"} canEdit={canEdit} />
         </Stack>
       )}
     </Paper>

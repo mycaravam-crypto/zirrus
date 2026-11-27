@@ -12,6 +12,9 @@ export type AssetPage = components["schemas"]["AssetPage"];
 export type UploadResult = components["schemas"]["UploadResult"];
 export type AssetFacets = components["schemas"]["AssetFacets"];
 export type CategoryFacet = components["schemas"]["CategoryFacet"];
+export type CategoryDetails = components["schemas"]["CategoryDetails"];
+export type SchemaDetails = components["schemas"]["SchemaDetails"];
+export type MetadataFieldDefinition = components["schemas"]["MetadataFieldDefinition"];
 
 /** Creates a client for the same-origin API (Caddy routes /api to the API container). */
 export function createZirrusClient(baseUrl = "") {

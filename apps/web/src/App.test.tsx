@@ -33,8 +33,17 @@ const details = (overrides: Record<string, unknown> = {}) => ({
 
 type Route = (request: Request) => Response | Promise<Response>;
 
+/** Endpoints every explorer view calls; tests override them as needed. */
+const defaults: Record<string, Route> = {
+  [`GET /api/v1/catalogs/${catalogId}/metadata-schema`]: () => json(200, { version: 0, fields: [] }),
+  [`GET /api/v1/catalogs/${catalogId}/categories`]: () => json(200, []),
+  [`GET /api/v1/catalogs/${catalogId}/assets/facets`]: () => json(200, { total: 0, categories: [] }),
+  [`GET /api/v1/catalogs/${catalogId}/assets/${assetId}/categories`]: () => json(200, []),
+};
+
 /** Renders the app with fetch routed by "METHOD /path"; returns the recorded requests. */
-function renderWith(routes: Record<string, Route>) {
+function renderWith(overrides: Record<string, Route>) {
+  const routes = { ...defaults, ...overrides };
   const requests: Request[] = [];
   vi.stubGlobal(
     "fetch",
@@ -90,7 +99,7 @@ test("viewers browse and open assets but get no upload, retry or edit actions", 
   const pane = await screen.findByRole("complementary", { name: "harbour.jpg" });
   expect(within(pane).getByRole("img", { name: "Preview of harbour.jpg" })).toHaveAttribute("src", `${assetUrl}/renditions/preview`);
   expect(within(pane).getByRole("link", { name: "Download original" })).toHaveAttribute("href", `${assetUrl}/content`);
-  expect(within(pane).getByText("You can view but not change this asset.")).toBeInTheDocument();
+  expect(await within(pane).findByText("You can view but not change this asset.")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Save metadata" })).not.toBeInTheDocument();
   expect(screen.queryByLabelText(/Choose images/)).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Retry processing" })).not.toBeInTheDocument();
@@ -216,6 +225,110 @@ test("uploads report progress, duplicates and refresh the grid", async () => {
   expect(await screen.findByText(/harbour.jpg uploaded; scanning and processing start now. harbour.jpg matches 1 existing/)).toBeInTheDocument();
   expect((sent[0] as FormData).get("file")).toBeInstanceOf(File);
   expect(await screen.findByText("Waiting for scan")).toBeInTheDocument();
+});
+
+test("a 401 while saving returns to the sign-in link", async () => {
+  let signedIn = true;
+  renderWith({
+    "GET /api/v1/me": () => (signedIn ? me()() : json(401, {})),
+    "GET /api/v1/catalogs": catalogs("editor"),
+    "GET /api/v1/antiforgery": csrf,
+    [`GET ${assetsPath}`]: () => json(200, { items: [summary], nextCursor: null }),
+    [`GET ${assetUrl}`]: () => json(200, details()),
+    [`PUT ${assetUrl}/metadata`]: () => {
+      signedIn = false;
+      return json(401, {});
+    },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: /Press photos/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Open\s+harbour\.jpg/ }));
+  fireEvent.click(await screen.findByRole("button", { name: "Save metadata" }));
+  expect(await screen.findByRole("link", { name: "Sign in" })).toBeInTheDocument();
+  expect(screen.queryByText(/Press photos/)).not.toBeInTheDocument();
+});
+
+test("with a schema, the editor shows typed fields, validates them and saves typed values", async () => {
+  const schema = {
+    version: 1,
+    fields: [
+      { key: "title", label: "Title", type: 0, required: true, multiple: false },
+      { key: "rating", label: "Rating", type: 2, required: false, multiple: false },
+      { key: "published", label: "Published", type: 4, required: false, multiple: false },
+      { key: "captured", label: "Captured", type: 3, required: false, multiple: false },
+    ],
+  };
+  const requests = renderWith({
+    "GET /api/v1/me": me(),
+    "GET /api/v1/catalogs": catalogs("editor"),
+    "GET /api/v1/antiforgery": csrf,
+    [`GET /api/v1/catalogs/${catalogId}/metadata-schema`]: () => json(200, schema),
+    [`GET ${assetsPath}`]: () => json(200, { items: [summary], nextCursor: null }),
+    [`GET ${assetUrl}`]: () => json(200, details({ metadata: { title: "Harbour", rating: 5, legacy: "x" } })),
+    [`PUT ${assetUrl}/metadata`]: () => json(200, details({ metadata: { title: "Quay", rating: 4.5 }, revision: 5 })),
+  });
+  fireEvent.click(await screen.findByRole("button", { name: /Press photos/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /^Open\s+harbour\.jpg/ }));
+
+  const title = await screen.findByRole("textbox", { name: /Title/ });
+  expect(title).toHaveValue("Harbour");
+  expect(screen.getByRole("textbox", { name: "Rating" })).toHaveValue("5");
+  expect(screen.getByText(/will be removed when you save: legacy/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Add field" })).not.toBeInTheDocument();
+
+  fireEvent.change(title, { target: { value: " " } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Rating" }), { target: { value: "lots" } });
+  fireEvent.change(screen.getByRole("textbox", { name: /Captured/ }), { target: { value: "2026-11-27T10:00:00" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save metadata" }));
+  expect(await screen.findByText("Title is required.")).toBeInTheDocument();
+  expect(screen.getByText("Rating: enter a number.")).toBeInTheDocument();
+  expect(screen.getByText(/Captured: enter a date/)).toBeInTheDocument();
+  expect(requests.some((r) => r.method === "PUT")).toBe(false);
+
+  fireEvent.change(title, { target: { value: "Quay" } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Rating" }), { target: { value: "4.5" } });
+  fireEvent.change(screen.getByRole("textbox", { name: /Captured/ }), { target: { value: "2026-11-27" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save metadata" }));
+  expect(await screen.findByText("Metadata saved.")).toBeInTheDocument();
+  const put = requests.find((r) => r.method === "PUT");
+  expect(await put?.clone().json()).toEqual({ title: "Quay", rating: 4.5, captured: "2026-11-27" }); // legacy key dropped
+});
+
+test("categories filter the grid with counts, and editors assign and remove them", async () => {
+  const harbour = { id: "c0000000-0000-4000-8000-000000000001", parentId: null, name: "Harbour" };
+  let assigned: (typeof harbour)[] = [];
+  const requests = renderWith({
+    "GET /api/v1/me": me(),
+    "GET /api/v1/catalogs": catalogs("editor"),
+    "GET /api/v1/antiforgery": csrf,
+    [`GET /api/v1/catalogs/${catalogId}/categories`]: () => json(200, [harbour]),
+    [`GET /api/v1/catalogs/${catalogId}/assets/facets`]: () => json(200, { total: 3, categories: [{ categoryId: harbour.id, name: "Harbour", count: 2 }] }),
+    [`GET ${assetsPath}`]: () => json(200, { items: [summary], nextCursor: null }),
+    [`GET ${assetUrl}`]: () => json(200, details()),
+    [`GET ${assetUrl}/categories`]: () => json(200, assigned),
+    [`PUT ${assetUrl}/categories/${harbour.id}`]: () => {
+      assigned = [harbour];
+      return json(200, harbour);
+    },
+    [`DELETE ${assetUrl}/categories/${harbour.id}`]: () => {
+      assigned = [];
+      return json(200, []);
+    },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: /Press photos/ }));
+  const category = await screen.findByRole("button", { name: /Harbour/ });
+  expect(await within(category).findByText("2 matching")).toBeInTheDocument();
+  fireEvent.click(category);
+  await waitFor(() => expect(requests.some((r) => r.url.includes(`categoryId=${harbour.id}`))).toBe(true));
+  expect(screen.getByText("Showing assets in Harbour")).toBeInTheDocument();
+
+  fireEvent.click(await screen.findByRole("button", { name: /^Open\s+harbour\.jpg/ }));
+  expect(await screen.findByText("Not in any category.")).toBeInTheDocument();
+  fireEvent.click(screen.getByLabelText("Add to category", { selector: "input" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Harbour" }));
+  const remove = await screen.findByRole("button", { name: "Remove from Harbour" });
+  expect(requests.find((r) => r.method === "PUT" && r.url.endsWith(`/categories/${harbour.id}`))?.headers.get("X-CSRF-TOKEN")).toBe("t0k3n");
+  fireEvent.click(remove);
+  expect(await screen.findByText("Not in any category.")).toBeInTheDocument();
 });
 
 test("German browsers get German strings with placeholders filled", () => {
