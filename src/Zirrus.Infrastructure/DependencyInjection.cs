@@ -59,6 +59,8 @@ public static class DependencyInjection
         services.AddScoped<ListCatalogs>();
         services.AddScoped<CatalogAccess>();
         services.AddScoped<CatalogAdministration>();
+        services.AddScoped<ISchemaStore, SchemaStore>();
+        services.AddScoped<SchemaAdministration>();
         services.AddScoped<IAssetStore, AssetStore>();
         services.AddScoped<AssetUseCases>();
         services.AddScoped<IStorageInventory, StorageInventory>();
