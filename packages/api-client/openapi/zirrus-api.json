@@ -141,6 +141,326 @@
         }
       }
     },
+    "/api/v1/catalogs/{catalogId}/metadata-schema": {
+      "get": {
+        "tags": [
+          "Catalogs"
+        ],
+        "summary": "Read the current catalog metadata schema",
+        "operationId": "GetMetadataSchema",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Catalogs"
+        ],
+        "summary": "Create the initial metadata schema (organization administrators only)",
+        "operationId": "CreateMetadataSchema",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/MetadataFieldDefinition"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogs/{catalogId}/categories": {
+      "get": {
+        "tags": [
+          "Catalogs"
+        ],
+        "summary": "List the catalog category tree",
+        "operationId": "ListCategories",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryDetails"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Catalogs"
+        ],
+        "summary": "Create a root or child category (administrators only)",
+        "operationId": "CreateCategory",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogs/{catalogId}/assets/{assetId}/categories/{categoryId}": {
+      "put": {
+        "tags": [
+          "Catalogs"
+        ],
+        "summary": "Assign an active asset to a category (editors)",
+        "operationId": "AssignAssetCategory",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/catalogs/{catalogId}/members/{subject}": {
       "put": {
         "tags": [
@@ -278,7 +598,7 @@
           "Assets"
         ],
         "summary": "List a catalog's assets, newest first (viewers see active assets only)",
-        "description": "Cursor pagination: pass nextCursor from the previous page; limit 1–200, default 50. Search and filters follow in W5.",
+        "description": "Cursor pagination: pass nextCursor from the previous page; limit 1–200, default 50. Optional q, categoryId and metadata (JSON object containment) filters; filtered results contain active assets only.",
         "operationId": "ListAssets",
         "parameters": [
           {
@@ -307,6 +627,28 @@
                 "string"
               ],
               "format": "int32"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "metadata",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -1009,6 +1351,34 @@
         },
         "description": "Read model returned by catalog queries."
       },
+      "CategoryDetails": {
+        "required": [
+          "id",
+          "parentId",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Category identifier.",
+            "format": "uuid"
+          },
+          "parentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Parent identifier, or null for a root.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name."
+          }
+        },
+        "description": "Category tree node returned to clients."
+      },
       "CreateCatalogRequest": {
         "required": [
           "name"
@@ -1021,6 +1391,27 @@
           }
         },
         "description": "Request to create a catalog."
+      },
+      "CreateCategoryRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Display name."
+          },
+          "parentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Parent category, or null for a root.",
+            "format": "uuid"
+          }
+        },
+        "description": "Request to create a category."
       },
       "CsrfToken": {
         "required": [
@@ -1068,6 +1459,43 @@
         "format": "binary"
       },
       "JsonElement": { },
+      "MetadataFieldDefinition": {
+        "required": [
+          "key",
+          "label",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Stable key."
+          },
+          "label": {
+            "type": "string",
+            "description": "Display label."
+          },
+          "type": {
+            "description": "Value type.",
+            "$ref": "#/components/schemas/MetadataFieldType"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether a value is required.",
+            "default": false
+          },
+          "multiple": {
+            "type": "boolean",
+            "description": "Whether the field holds a list.",
+            "default": false
+          }
+        },
+        "description": "Input for one field of a new schema version."
+      },
+      "MetadataFieldType": {
+        "type": "integer",
+        "description": "Value type of a metadata field."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -1105,6 +1533,32 @@
             ]
           }
         }
+      },
+      "SchemaDetails": {
+        "required": [
+          "version",
+          "fields"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Immutable schema version.",
+            "format": "int32"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetadataFieldDefinition"
+            },
+            "description": "Fields in display order."
+          }
+        },
+        "description": "Public schema representation."
       },
       "SetCatalogMemberRequest": {
         "required": [
