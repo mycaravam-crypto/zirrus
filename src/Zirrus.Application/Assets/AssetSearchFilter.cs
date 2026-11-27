@@ -11,6 +11,19 @@ public sealed record AssetSearchFilter(string? Text, Guid? CategoryId, string? M
     /// <summary>Whether this is a search rather than an unfiltered status list.</summary>
     public bool HasCriteria => !string.IsNullOrEmpty(Text) || CategoryId is not null || MetadataJson is not null;
 
+    /// <summary>Top-level keys of the metadata containment filter (none without one).</summary>
+    /// <returns>The keys, in document order.</returns>
+    public IEnumerable<string> MetadataKeys()
+    {
+        if (MetadataJson is null)
+        {
+            return [];
+        }
+
+        using var document = System.Text.Json.JsonDocument.Parse(MetadataJson);
+        return document.RootElement.EnumerateObject().Select(p => p.Name).ToList();
+    }
+
     /// <summary>Checks bounded inputs before the database query.</summary>
     /// <returns>True when every supplied criterion is valid.</returns>
     public bool IsValid()

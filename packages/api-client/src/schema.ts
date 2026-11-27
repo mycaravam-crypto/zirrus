@@ -154,6 +154,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/catalogs/{catalogId}/assets/facets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Count matching active assets, in total and per category
+         * @description Takes the same q, categoryId and metadata filters as the list. Counts only active assets the caller may list; at most 50 category facets, largest first.
+         */
+        get: operations["GetAssetFacets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/catalogs/{catalogId}/assets/{assetId}/retry": {
         parameters: {
             query?: never;
@@ -295,6 +315,16 @@ export interface components {
              */
             updatedAt: string;
         };
+        /** @description Counts for a search, scoped exactly like its results (catalog, active assets, filters). */
+        AssetFacets: {
+            /**
+             * Format: int32
+             * @description Number of matching assets.
+             */
+            total: number | string;
+            /** @description Matching assets per category, largest first (at most int AssetFacets.MaxCategories). */
+            categories: components["schemas"]["CategoryFacet"][];
+        };
         /** @description One page of a catalog's assets, newest first. */
         AssetPage: {
             /** @description Assets on this page. */
@@ -376,6 +406,21 @@ export interface components {
             parentId: null | string;
             /** @description Display name. */
             name: string;
+        };
+        /** @description Number of matching assets in one category. */
+        CategoryFacet: {
+            /**
+             * Format: uuid
+             * @description Category.
+             */
+            categoryId: string;
+            /** @description Category name. */
+            name: string;
+            /**
+             * Format: int32
+             * @description Matching assets assigned to it.
+             */
+            count: number | string;
         };
         /** @description Request to create a catalog. */
         CreateCatalogRequest: {
@@ -1020,6 +1065,50 @@ export interface operations {
             };
             /** @description Unsupported Media Type */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetAssetFacets: {
+        parameters: {
+            query?: {
+                q?: string;
+                categoryId?: string;
+                metadata?: string;
+            };
+            header?: never;
+            path: {
+                catalogId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetFacets"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -17,6 +17,49 @@ internal sealed class AssetStore(ZirrusDbContext db) : IAssetStore
     /// <inheritdoc />
     public async Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken, AssetSearchFilter? filter = null)
     {
+        var query = Scoped(catalogId, activeOnly, filter);
+        if (after is { } position)
+        {
+            // Keyset pagination on (created_at, id), newest first; stable while new uploads arrive.
+            query = query.Where(a => a.CreatedAt < position.CreatedAt || (a.CreatedAt == position.CreatedAt && a.Id.CompareTo(position.Id) < 0));
+        }
+
+        var rows = await query.OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.Id).Take(limit)
+            .Select(a => new { a.Id, a.FileName, a.MediaType, a.SizeBytes, a.State, a.StatusReason, a.CreatedAt, a.UpdatedAt })
+            .ToListAsync(cancellationToken);
+        return rows.Select(a => new AssetSummary(a.Id, a.FileName, a.MediaType, a.SizeBytes, a.State.ToString().ToLowerInvariant(), a.StatusReason, a.CreatedAt, a.UpdatedAt)).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<AssetFacets> FacetsAsync(Guid catalogId, AssetSearchFilter filter, CancellationToken cancellationToken)
+    {
+        // Same scope as the result list (catalog, active only, filters), so counts never include assets
+        // the caller could not page to.
+        var matching = Scoped(catalogId, activeOnly: true, filter);
+        var total = await matching.CountAsync(cancellationToken);
+        var counts = await db.AssetCategories.AsNoTracking()
+            .Where(c => c.CatalogId == catalogId && matching.Any(a => a.Id == c.AssetId))
+            .GroupBy(c => c.CategoryId)
+            .Select(g => new { CategoryId = g.Key, Count = g.Count() })
+            .OrderByDescending(g => g.Count).ThenBy(g => g.CategoryId).Take(AssetFacets.MaxCategories)
+            .ToListAsync(cancellationToken);
+        var ids = counts.Select(c => c.CategoryId).ToList();
+        var names = await db.Categories.AsNoTracking()
+            .Where(c => c.CatalogId == catalogId && ids.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, c => c.Name, cancellationToken);
+        var categories = counts.Where(c => names.ContainsKey(c.CategoryId))
+            .Select(c => new CategoryFacet(c.CategoryId, names[c.CategoryId], c.Count))
+            .OrderByDescending(f => f.Count).ThenBy(f => f.Name, StringComparer.Ordinal).ToList();
+        return new AssetFacets(total, categories);
+    }
+
+    /// <summary>Assets of one catalog visible in lists: never deleting or deleted; filters as given.</summary>
+    /// <param name="catalogId">Catalog.</param>
+    /// <param name="activeOnly">Only active assets (viewers and every filtered search).</param>
+    /// <param name="filter">Optional search criteria.</param>
+    /// <returns>The composable query.</returns>
+    private IQueryable<Asset> Scoped(Guid catalogId, bool activeOnly, AssetSearchFilter? filter)
+    {
         var query = db.Assets.AsNoTracking().Where(a => a.CatalogId == catalogId && a.State != AssetState.Deleting && a.State != AssetState.Deleted);
         if (activeOnly)
         {
@@ -25,14 +68,17 @@ internal sealed class AssetStore(ZirrusDbContext db) : IAssetStore
 
         if (filter?.Text is { Length: > 0 } text)
         {
-            // Fixed configurations and parameterized query text; no user-controlled SQL identifiers.
+            // Fixed configurations and parameterized query text; no user-controlled SQL identifiers. File
+            // names are split on . _ - first, so "harbour" finds harbour-at-dusk.jpg (the parser would keep
+            // the whole name as one file token). The expressions must match the GIN indexes (SearchIndexes,
+            // SearchFileNameWords migrations).
             var matchingIds = db.Database.SqlQuery<Guid>($"""
                 SELECT id AS "Value" FROM assets
                 WHERE catalog_id = {catalogId} AND state = 'Active'
                   AND (
-                    (to_tsvector('english', file_name) || jsonb_to_tsvector('english', metadata, '["string"]'::jsonb)) @@ plainto_tsquery('english', {text})
-                    OR (to_tsvector('german', file_name) || jsonb_to_tsvector('german', metadata, '["string"]'::jsonb)) @@ plainto_tsquery('german', {text})
-                    OR (to_tsvector('simple', file_name) || jsonb_to_tsvector('simple', metadata, '["string"]'::jsonb)) @@ plainto_tsquery('simple', {text})
+                    (to_tsvector('english', regexp_replace(file_name, '[._-]+', ' ', 'g')) || jsonb_to_tsvector('english', metadata, '["string"]'::jsonb)) @@ plainto_tsquery('english', {text})
+                    OR (to_tsvector('german', regexp_replace(file_name, '[._-]+', ' ', 'g')) || jsonb_to_tsvector('german', metadata, '["string"]'::jsonb)) @@ plainto_tsquery('german', {text})
+                    OR (to_tsvector('simple', regexp_replace(file_name, '[._-]+', ' ', 'g')) || jsonb_to_tsvector('simple', metadata, '["string"]'::jsonb)) @@ plainto_tsquery('simple', {text})
                   )
                 """);
             query = query.Where(a => matchingIds.Contains(a.Id));
@@ -48,16 +94,7 @@ internal sealed class AssetStore(ZirrusDbContext db) : IAssetStore
             query = query.Where(a => EF.Functions.JsonContains(a.Metadata, json));
         }
 
-        if (after is { } position)
-        {
-            // Keyset pagination on (created_at, id), newest first; stable while new uploads arrive.
-            query = query.Where(a => a.CreatedAt < position.CreatedAt || (a.CreatedAt == position.CreatedAt && a.Id.CompareTo(position.Id) < 0));
-        }
-
-        var rows = await query.OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.Id).Take(limit)
-            .Select(a => new { a.Id, a.FileName, a.MediaType, a.SizeBytes, a.State, a.StatusReason, a.CreatedAt, a.UpdatedAt })
-            .ToListAsync(cancellationToken);
-        return rows.Select(a => new AssetSummary(a.Id, a.FileName, a.MediaType, a.SizeBytes, a.State.ToString().ToLowerInvariant(), a.StatusReason, a.CreatedAt, a.UpdatedAt)).ToList();
+        return query;
     }
 
     /// <inheritdoc />

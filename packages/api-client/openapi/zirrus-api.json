@@ -777,6 +777,81 @@
         }
       }
     },
+    "/api/v1/catalogs/{catalogId}/assets/facets": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Count matching active assets, in total and per category",
+        "description": "Takes the same q, categoryId and metadata filters as the list. Counts only active assets the caller may list; at most 50 category facets, largest first.",
+        "operationId": "GetAssetFacets",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "metadata",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetFacets"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/catalogs/{catalogId}/assets/{assetId}/retry": {
       "post": {
         "tags": [
@@ -1302,6 +1377,32 @@
         },
         "description": "Asset as returned by the API."
       },
+      "AssetFacets": {
+        "required": [
+          "total",
+          "categories"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Number of matching assets.",
+            "format": "int32"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryFacet"
+            },
+            "description": "Matching assets per category, largest first (at most int AssetFacets.MaxCategories)."
+          }
+        },
+        "description": "Counts for a search, scoped exactly like its results (catalog, active assets, filters)."
+      },
       "AssetPage": {
         "required": [
           "items",
@@ -1467,6 +1568,35 @@
           }
         },
         "description": "Category tree node returned to clients."
+      },
+      "CategoryFacet": {
+        "required": [
+          "categoryId",
+          "name",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string",
+            "description": "Category.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Category name."
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Matching assets assigned to it.",
+            "format": "int32"
+          }
+        },
+        "description": "Number of matching assets in one category."
       },
       "CreateCatalogRequest": {
         "required": [

@@ -34,6 +34,19 @@ internal static class AssetEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
+        // Counts for the same search, scoped like the list (never includes assets the caller cannot list).
+        assets.MapGet("/facets", async (Guid catalogId, string? q, Guid? categoryId, string? metadata, AssetUseCases useCases, CancellationToken cancellationToken) =>
+            {
+                var result = await useCases.FacetsAsync(catalogId, new AssetSearchFilter(q, categoryId, metadata), cancellationToken);
+                return result.Status == OperationStatus.Ok ? Results.Ok(result.Value) : Problem(result.Status, result.Error);
+            })
+            .WithName("GetAssetFacets")
+            .WithSummary("Count matching active assets, in total and per category")
+            .WithDescription("Takes the same q, categoryId and metadata filters as the list. Counts only active assets the caller may list; at most 50 category facets, largest first.")
+            .Produces<AssetFacets>()
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         // Streams one multipart file into quarantine; scanning and rendering run in the worker.
         assets.MapPost("/", UploadAsync)
             .WithName("UploadAsset")

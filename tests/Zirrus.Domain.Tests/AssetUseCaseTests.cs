@@ -86,6 +86,35 @@ public sealed class AssetUseCaseTests
     public async Task List_rejects_outsiders_and_bad_paging(string who, string? cursor, int? limit, OperationStatus expected) =>
         Assert.Equal(expected, (await For(who).ListAsync(_press.Id, cursor, limit, Ct)).Status);
 
+    [Theory]
+    [InlineData("victor", OperationStatus.Ok)]
+    [InlineData("erin", OperationStatus.Ok)]
+    [InlineData("oscar", OperationStatus.NotFound)]
+    public async Task Facets_follow_catalog_read_access(string who, OperationStatus expected)
+    {
+        var result = await For(who).FacetsAsync(_press.Id, new AssetSearchFilter(null, null, null), Ct);
+        Assert.Equal(expected, result.Status);
+        if (expected == OperationStatus.Ok)
+        {
+            Assert.Equal(1, result.Value!.Total); // the active asset only, never the pending one
+        }
+    }
+
+    [Theory]
+    [InlineData("""{"title":"Harbour"}""", OperationStatus.Ok)]
+    [InlineData("""{"secret":"x"}""", OperationStatus.Invalid)]
+    public async Task Metadata_filters_are_limited_to_schema_fields(string metadata, OperationStatus expected)
+    {
+        _assets.Schema = MetadataSchema.Create(_press, 1, [new("title", "Title", MetadataFieldType.Text)], Now);
+        var filter = new AssetSearchFilter(null, null, metadata);
+        Assert.Equal(expected, (await For("victor").ListAsync(_press.Id, null, null, Ct, filter)).Status);
+        Assert.Equal(expected, (await For("victor").FacetsAsync(_press.Id, filter, Ct)).Status);
+    }
+
+    [Fact]
+    public async Task Without_a_schema_any_valid_metadata_key_may_be_filtered() =>
+        Assert.Equal(OperationStatus.Ok, (await For("victor").ListAsync(_press.Id, null, null, Ct, new AssetSearchFilter(null, null, """{"anything":1}"""))).Status);
+
     [Fact]
     public void Cursors_round_trip_and_reject_garbage()
     {
@@ -278,6 +307,9 @@ public sealed class AssetUseCaseTests
                 .OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.Id).Take(limit)
                 .Select(a => new AssetSummary(a.Id, a.FileName, a.MediaType, a.SizeBytes, a.State.ToString().ToLowerInvariant(), a.StatusReason, a.CreatedAt, a.UpdatedAt))
                 .ToList());
+
+        public Task<AssetFacets> FacetsAsync(Guid catalogId, AssetSearchFilter filter, CancellationToken cancellationToken) =>
+            Task.FromResult(new AssetFacets(Items.Count(a => a.CatalogId == catalogId && a.State == AssetState.Active), []));
 
         public Task<bool> TrySaveChangesAsync(CancellationToken cancellationToken)
         {

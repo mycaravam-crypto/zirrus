@@ -65,6 +65,21 @@ public sealed record AssetSummary(Guid Id, string FileName, string MediaType, lo
 /// <param name="NextCursor">Opaque cursor for the next page, or null at the end.</param>
 public sealed record AssetPage(IReadOnlyList<AssetSummary> Items, string? NextCursor);
 
+/// <summary>Counts for a search, scoped exactly like its results (catalog, active assets, filters).</summary>
+/// <param name="Total">Number of matching assets.</param>
+/// <param name="Categories">Matching assets per category, largest first (at most <see cref="MaxCategories"/>).</param>
+public sealed record AssetFacets(int Total, IReadOnlyList<CategoryFacet> Categories)
+{
+    /// <summary>Maximum number of category facets returned.</summary>
+    public const int MaxCategories = 50;
+}
+
+/// <summary>Number of matching assets in one category.</summary>
+/// <param name="CategoryId">Category.</param>
+/// <param name="Name">Category name.</param>
+/// <param name="Count">Matching assets assigned to it.</param>
+public sealed record CategoryFacet(Guid CategoryId, string Name, int Count);
+
 /// <summary>Keyset position in a newest-first asset list.</summary>
 /// <param name="CreatedAt">Creation time of the last item seen.</param>
 /// <param name="Id">ID of the last item seen (tie-breaker).</param>
@@ -128,6 +143,13 @@ public interface IAssetStore
     /// <returns>The rows.</returns>
     Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken, AssetSearchFilter? filter = null);
 
+    /// <summary>Counts active assets matching the filter, in total and per category of the catalog.</summary>
+    /// <param name="catalogId">Catalog.</param>
+    /// <param name="filter">Search criteria (may be empty).</param>
+    /// <param name="cancellationToken">Cancels the query.</param>
+    /// <returns>The counts.</returns>
+    Task<AssetFacets> FacetsAsync(Guid catalogId, AssetSearchFilter filter, CancellationToken cancellationToken);
+
     /// <summary>Loads the latest immutable metadata schema for the asset's organization and catalog.</summary>
     /// <param name="organizationId">Organization.</param>
     /// <param name="catalogId">Catalog.</param>
@@ -186,9 +208,9 @@ public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, Time
             return OperationResult.Fail<AssetPage>(OperationStatus.NotFound, "Catalog not found.");
         }
 
-        if (filter is not null && !filter.IsValid())
+        if (await ValidateFilterAsync(catalogId, filter, cancellationToken) is { } invalid)
         {
-            return OperationResult.Fail<AssetPage>(OperationStatus.Invalid, "Invalid search criteria.");
+            return OperationResult.Fail<AssetPage>(OperationStatus.Invalid, invalid);
         }
 
         var size = limit ?? DefaultPageSize;
@@ -213,6 +235,65 @@ public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, Time
         var items = rows.Take(size).ToList();
         var next = rows.Count > size ? new AssetListPosition(items[^1].CreatedAt, items[^1].Id).Encode() : null;
         return OperationResult.Ok(new AssetPage(items, next));
+    }
+
+    /// <summary>
+    /// Counts the active assets matching a search, in total and per category. Authorization and scope
+    /// are the same as for <see cref="ListAsync"/>, so counts never reveal assets the caller cannot list.
+    /// </summary>
+    /// <param name="catalogId">Catalog.</param>
+    /// <param name="filter">Search criteria (may be empty).</param>
+    /// <param name="cancellationToken">Cancels the query.</param>
+    /// <returns>The counts, or NotFound or Invalid.</returns>
+    public async Task<OperationResult<AssetFacets>> FacetsAsync(Guid catalogId, AssetSearchFilter filter, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(filter);
+        if (!await access.CanReadAsync(catalogId, cancellationToken))
+        {
+            return OperationResult.Fail<AssetFacets>(OperationStatus.NotFound, "Catalog not found.");
+        }
+
+        if (await ValidateFilterAsync(catalogId, filter, cancellationToken) is { } invalid)
+        {
+            return OperationResult.Fail<AssetFacets>(OperationStatus.Invalid, invalid);
+        }
+
+        return OperationResult.Ok(await assets.FacetsAsync(catalogId, filter, cancellationToken));
+    }
+
+    /// <summary>
+    /// Checks bounded inputs and, when the catalog has a metadata schema, that every metadata filter
+    /// key is a schema field (allowlist; data-storage-search.md, "allowlisted fields").
+    /// </summary>
+    /// <param name="catalogId">Catalog.</param>
+    /// <param name="filter">Criteria, or null.</param>
+    /// <param name="cancellationToken">Cancels the schema lookup.</param>
+    /// <returns>An error message, or null when the filter is acceptable.</returns>
+    private async Task<string?> ValidateFilterAsync(Guid catalogId, AssetSearchFilter? filter, CancellationToken cancellationToken)
+    {
+        if (filter is null)
+        {
+            return null;
+        }
+
+        if (!filter.IsValid())
+        {
+            return "Invalid search criteria.";
+        }
+
+        if (filter.MetadataJson is null)
+        {
+            return null;
+        }
+
+        var schema = await assets.FindMetadataSchemaAsync(access.OrganizationId, catalogId, cancellationToken);
+        if (schema is null)
+        {
+            return null;
+        }
+
+        var unknown = filter.MetadataKeys().FirstOrDefault(key => schema.Fields.All(f => f.Key != key));
+        return unknown is null ? null : $"Metadata filter field '{unknown}' is not in the catalog schema.";
     }
 
     /// <summary>Gets an asset the caller may see.</summary>
