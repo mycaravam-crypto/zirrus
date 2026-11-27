@@ -10,6 +10,9 @@ public interface ICategoryStore
     /// <summary>Lists categories within the specified organization and catalog.</summary>
     Task<IReadOnlyList<Category>> ListAsync(Guid organizationId, Guid catalogId, CancellationToken cancellationToken);
 
+    /// <summary>Loads one category within the organization and catalog.</summary>
+    Task<Category?> FindCategoryAsync(Guid organizationId, Guid catalogId, Guid categoryId, CancellationToken cancellationToken);
+
     /// <summary>Loads a catalog within the organization.</summary>
     Task<Catalog?> FindCatalogAsync(Guid organizationId, Guid catalogId, CancellationToken cancellationToken);
 
@@ -20,7 +23,7 @@ public interface ICategoryStore
     Task<bool> TryAddAsync(Category category, CancellationToken cancellationToken);
 
     /// <summary>Ensures an assignment exists without creating duplicates.</summary>
-    Task AssignAsync(AssetCategory assignment, CancellationToken cancellationToken);
+    Task<bool> AssignAsync(AssetCategory assignment, CancellationToken cancellationToken);
 }
 
 /// <summary>Category tree node returned to clients.</summary>
@@ -69,7 +72,7 @@ public sealed class CategoryManagement(ICategoryStore store, CatalogAccess acces
         {
             if (parentId is { } id)
             {
-                var parent = (await store.ListAsync(organization.Id, catalogId, cancellationToken)).SingleOrDefault(c => c.Id == id);
+                var parent = await store.FindCategoryAsync(organization.Id, catalogId, id, cancellationToken);
                 if (parent is null)
                 {
                     return OperationResult.Fail<CategoryDetails>(OperationStatus.NotFound, "Parent category not found.");
@@ -106,14 +109,15 @@ public sealed class CategoryManagement(ICategoryStore store, CatalogAccess acces
         }
 
         var asset = await store.FindAssetAsync(organization.Id, catalogId, assetId, cancellationToken);
-        var category = (await store.ListAsync(organization.Id, catalogId, cancellationToken)).SingleOrDefault(c => c.Id == categoryId);
+        var category = await store.FindCategoryAsync(organization.Id, catalogId, categoryId, cancellationToken);
         if (asset is null || asset.State != AssetState.Active || category is null)
         {
             return OperationResult.Fail<CategoryDetails>(OperationStatus.NotFound, "Active asset or category not found.");
         }
 
-        await store.AssignAsync(AssetCategory.Assign(asset, category, time.GetUtcNow()), cancellationToken);
-        return OperationResult.Ok(ToDetails(category));
+        return await store.AssignAsync(AssetCategory.Assign(asset, category, time.GetUtcNow()), cancellationToken)
+            ? OperationResult.Ok(ToDetails(category))
+            : OperationResult.Fail<CategoryDetails>(OperationStatus.NotFound, "Active asset or category not found.");
     }
 
     private static CategoryDetails ToDetails(Category category) => new(category.Id, category.ParentId, category.Name);
