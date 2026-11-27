@@ -146,6 +146,11 @@ public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, Time
             return OperationResult.Fail<AssetDetails>(OperationStatus.Forbidden, "Editing requires the editor role.");
         }
 
+        if (expectedRevision != asset.Revision)
+        {
+            return OperationResult.Fail<AssetDetails>(OperationStatus.PreconditionFailed, "The asset revision is stale.");
+        }
+
         AssetMetadata metadata;
         try
         {
