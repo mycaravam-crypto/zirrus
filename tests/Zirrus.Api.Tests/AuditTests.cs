@@ -211,9 +211,9 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
 
         Assert.Equal(2, denied.Count);
         Assert.All(denied, e => Assert.Equal("denied", e.Outcome));
-        Assert.Contains("method=POST", denied[0].Detail, StringComparison.Ordinal);
-        Assert.Contains("method=GET", denied[1].Detail, StringComparison.Ordinal);
-        Assert.Equal(missingAssetId, denied[1].ResourceId);
+        Assert.Contains("method=POST", denied[0].Detail!, StringComparison.Ordinal);
+        Assert.Contains("method=GET", denied[1].Detail!, StringComparison.Ordinal);
+        Assert.Equal((Guid?)missingAssetId, denied[1].ResourceId);
         Assert.DoesNotContain("Sensitive category name", string.Join('\n', denied.Select(e => e.Detail)));
     }
 
