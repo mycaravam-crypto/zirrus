@@ -15,12 +15,37 @@ internal sealed class AssetStore(ZirrusDbContext db) : IAssetStore
         db.Assets.SingleOrDefaultAsync(a => a.CatalogId == catalogId && a.Id == assetId, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken, AssetSearchFilter? filter = null)
     {
         var query = db.Assets.AsNoTracking().Where(a => a.CatalogId == catalogId && a.State != AssetState.Deleting && a.State != AssetState.Deleted);
         if (activeOnly)
         {
             query = query.Where(a => a.State == AssetState.Active);
+        }
+
+        if (filter?.Text is { Length: > 0 } text)
+        {
+            // Fixed configurations and parameterized query text; no user-controlled SQL identifiers.
+            var matchingIds = db.Database.SqlQuery<Guid>($"""
+                SELECT id AS "Value" FROM assets
+                WHERE catalog_id = {catalogId} AND state = 'Active'
+                  AND (
+                    (to_tsvector('english', file_name) || jsonb_to_tsvector('english', metadata, '["string"]'::jsonb)) @@ plainto_tsquery('english', {text})
+                    OR (to_tsvector('german', file_name) || jsonb_to_tsvector('german', metadata, '["string"]'::jsonb)) @@ plainto_tsquery('german', {text})
+                    OR (to_tsvector('simple', file_name) || jsonb_to_tsvector('simple', metadata, '["string"]'::jsonb)) @@ plainto_tsquery('simple', {text})
+                  )
+                """);
+            query = query.Where(a => matchingIds.Contains(a.Id));
+        }
+
+        if (filter?.CategoryId is { } categoryId)
+        {
+            query = query.Where(a => db.AssetCategories.Any(c => c.CatalogId == a.CatalogId && c.AssetId == a.Id && c.CategoryId == categoryId));
+        }
+
+        if (filter?.MetadataJson is { } json)
+        {
+            query = query.Where(a => EF.Functions.JsonContains(a.Metadata, json));
         }
 
         if (after is { } position)
@@ -34,6 +59,12 @@ internal sealed class AssetStore(ZirrusDbContext db) : IAssetStore
             .ToListAsync(cancellationToken);
         return rows.Select(a => new AssetSummary(a.Id, a.FileName, a.MediaType, a.SizeBytes, a.State.ToString().ToLowerInvariant(), a.StatusReason, a.CreatedAt, a.UpdatedAt)).ToList();
     }
+
+    /// <inheritdoc />
+    public Task<MetadataSchema?> FindMetadataSchemaAsync(Guid organizationId, Guid catalogId, CancellationToken cancellationToken) =>
+        db.Set<MetadataSchema>().AsNoTracking().Include(s => s.Fields)
+            .Where(s => s.OrganizationId == organizationId && s.CatalogId == catalogId)
+            .OrderByDescending(s => s.Version).FirstOrDefaultAsync(cancellationToken);
 
     /// <inheritdoc />
     public Task<Rendition?> FindRenditionAsync(Guid assetId, string kind, CancellationToken cancellationToken) =>

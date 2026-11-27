@@ -51,7 +51,7 @@ public sealed class MetadataField
     /// <summary>Value type.</summary>
     public MetadataFieldType Type { get; private set; }
 
-    /// <summary>A value is required before an asset can be saved.</summary>
+    /// <summary>A non-empty value is required on explicit metadata edits; ingestion may initially leave it missing.</summary>
     public bool Required { get; private set; }
 
     /// <summary>The field holds a list of values.</summary>

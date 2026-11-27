@@ -140,6 +140,35 @@ public sealed class AssetUseCaseTests
         Assert.Equal(OperationStatus.Invalid, (await For("erin").UpdateMetadataAsync(_press.Id, _active.Id, "[1]", _active.Revision, Ct)).Status);
 
     [Fact]
+    public async Task Configured_schema_rejects_invalid_edits_without_saving()
+    {
+        _assets.Schema = MetadataSchema.Create(_press, 1, [new("title", "Title", MetadataFieldType.Text, Required: true)], Now);
+        var revision = _active.Revision;
+        var result = await For("erin").UpdateMetadataAsync(_press.Id, _active.Id, "{}", revision, Ct);
+        Assert.Equal(OperationStatus.Invalid, result.Status);
+        Assert.Equal(revision, _active.Revision);
+        Assert.Equal(0, _assets.Saves);
+    }
+
+    [Fact]
+    public async Task Stale_revision_takes_precedence_over_invalid_metadata()
+    {
+        _assets.Schema = MetadataSchema.Create(_press, 1, [new("title", "Title", MetadataFieldType.Text, Required: true)], Now);
+        var result = await For("erin").UpdateMetadataAsync(_press.Id, _active.Id, "{}", _active.Revision - 1, Ct);
+        Assert.Equal(OperationStatus.PreconditionFailed, result.Status);
+        Assert.Equal(0, _assets.Saves);
+    }
+
+    [Fact]
+    public async Task Configured_schema_accepts_valid_edits()
+    {
+        _assets.Schema = MetadataSchema.Create(_press, 1, [new("title", "Title", MetadataFieldType.Text, Required: true)], Now);
+        var result = await For("erin").UpdateMetadataAsync(_press.Id, _active.Id, """{"title":"Harbour"}""", _active.Revision, Ct);
+        Assert.Equal(OperationStatus.Ok, result.Status);
+        Assert.Equal(1, _assets.Saves);
+    }
+
+    [Fact]
     public async Task Assets_being_deleted_cannot_be_edited_by_anyone()
     {
         var deleting = Asset.Start(_press, "c.jpg", "image/jpeg", "erin", Now);
@@ -234,10 +263,15 @@ public sealed class AssetUseCaseTests
         public Task<Asset?> FindAsync(Guid catalogId, Guid assetId, CancellationToken cancellationToken) =>
             Task.FromResult(Items.SingleOrDefault(a => a.CatalogId == catalogId && a.Id == assetId));
 
+        public MetadataSchema? Schema { get; set; }
+
+        public Task<MetadataSchema?> FindMetadataSchemaAsync(Guid organizationId, Guid catalogId, CancellationToken cancellationToken) =>
+            Task.FromResult(Schema is { } schema && schema.OrganizationId == organizationId && schema.CatalogId == catalogId ? schema : null);
+
         public Task<Rendition?> FindRenditionAsync(Guid assetId, string kind, CancellationToken cancellationToken) =>
             Task.FromResult<Rendition?>(null);
 
-        public Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken) =>
+        public Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken, AssetSearchFilter? filter = null) =>
             Task.FromResult<IReadOnlyList<AssetSummary>>(Items
                 .Where(a => a.CatalogId == catalogId && (!activeOnly || a.State == AssetState.Active))
                 .Where(a => after is not { } p || a.CreatedAt < p.CreatedAt || (a.CreatedAt == p.CreatedAt && a.Id.CompareTo(p.Id) < 0))

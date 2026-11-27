@@ -114,7 +114,7 @@ export function Explorer({ client, onNavigate }: { client: ZirrusClient; onNavig
                   </div>
                 </Group>
                 {canEdit && <UploadPanel client={client} catalogId={catalog.id} />}
-                <AssetGrid client={client} catalogId={catalog.id} selected={assetId} onSelect={setAssetId} />
+                <AssetGrid key={catalog.id} client={client} catalogId={catalog.id} selected={assetId} onSelect={setAssetId} />
               </Stack>
             )}
           </section>

@@ -59,6 +59,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/catalogs/{catalogId}/metadata-schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the current catalog metadata schema */
+        get: operations["GetMetadataSchema"];
+        put?: never;
+        /** Create the initial metadata schema (organization administrators only) */
+        post: operations["CreateMetadataSchema"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/{catalogId}/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the catalog category tree */
+        get: operations["ListCategories"];
+        put?: never;
+        /** Create a root or child category (administrators only) */
+        post: operations["CreateCategory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/{catalogId}/assets/{assetId}/categories/{categoryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Assign an active asset to a category (editors) */
+        put: operations["AssignAssetCategory"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/catalogs/{catalogId}/members/{subject}": {
         parameters: {
             query?: never;
@@ -86,7 +139,7 @@ export interface paths {
         };
         /**
          * List a catalog's assets, newest first (viewers see active assets only)
-         * @description Cursor pagination: pass nextCursor from the previous page; limit 1–200, default 50. Search and filters follow in W5.
+         * @description Cursor pagination: pass nextCursor from the previous page; limit 1–200, default 50. Optional q, categoryId and metadata (JSON object containment) filters; filtered results contain active assets only.
          */
         get: operations["ListAssets"];
         put?: never;
@@ -308,10 +361,35 @@ export interface components {
             /** @description The caller's access: `admin`, `editor` or `viewer`. */
             access: string;
         };
+        /** @description Category tree node returned to clients. */
+        CategoryDetails: {
+            /**
+             * Format: uuid
+             * @description Category identifier.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Parent identifier, or null for a root.
+             */
+            parentId: null | string;
+            /** @description Display name. */
+            name: string;
+        };
         /** @description Request to create a catalog. */
         CreateCatalogRequest: {
             /** @description Catalog name, 1–200 characters, unique in the organization. */
             name: string;
+        };
+        /** @description Request to create a category. */
+        CreateCategoryRequest: {
+            /** @description Display name. */
+            name: string;
+            /**
+             * Format: uuid
+             * @description Parent category, or null for a root.
+             */
+            parentId?: null | string;
         };
         /** @description Antiforgery token for the SPA, as returned by `GET /api/v1/antiforgery`. */
         CsrfToken: {
@@ -332,6 +410,27 @@ export interface components {
         /** Format: binary */
         IFormFile: string;
         JsonElement: unknown;
+        /** @description Input for one field of a new schema version. */
+        MetadataFieldDefinition: {
+            /** @description Stable key. */
+            key: string;
+            /** @description Display label. */
+            label: string;
+            /** @description Value type. */
+            type: components["schemas"]["MetadataFieldType"];
+            /**
+             * @description Whether a value is required.
+             * @default false
+             */
+            required: boolean;
+            /**
+             * @description Whether the field holds a list.
+             * @default false
+             */
+            multiple: boolean;
+        };
+        /** @description Value type of a metadata field. */
+        MetadataFieldType: number;
         ProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -339,6 +438,16 @@ export interface components {
             status?: null | number | string;
             detail?: null | string;
             instance?: null | string;
+        };
+        /** @description Public schema representation. */
+        SchemaDetails: {
+            /**
+             * Format: int32
+             * @description Immutable schema version.
+             */
+            version: number | string;
+            /** @description Fields in display order. */
+            fields: components["schemas"]["MetadataFieldDefinition"][];
         };
         /** @description Request to grant or change a catalog role. */
         SetCatalogMemberRequest: {
@@ -481,6 +590,234 @@ export interface operations {
             };
         };
     };
+    GetMetadataSchema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchemaDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateMetadataSchema: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MetadataFieldDefinition"][];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchemaDetails"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryDetails"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCategoryRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryDetails"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AssignAssetCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogId: string;
+                assetId: string;
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     SetCatalogMember: {
         parameters: {
             query?: never;
@@ -579,6 +916,9 @@ export interface operations {
             query?: {
                 cursor?: string;
                 limit?: number | string;
+                q?: string;
+                categoryId?: string;
+                metadata?: string;
             };
             header?: never;
             path: {
