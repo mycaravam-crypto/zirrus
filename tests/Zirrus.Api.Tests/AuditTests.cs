@@ -56,7 +56,7 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
         var categoryId = (await category.Content.ReadFromJsonAsync<JsonElement>(Api.Ct)).GetProperty("id").GetGuid();
         (await Api.SendAsync(erin, HttpMethod.Put, $"{path}/categories/{categoryId}")).Dispose();
         (await Api.SendAsync(erin, HttpMethod.Delete, $"{path}/categories/{categoryId}")).Dispose();
-        (await SendWithIfMatch(erin, HttpMethod.Delete, path, null, $"\\"{asset.Revision + 1}\\"")).Dispose();
+        (await SendWithIfMatch(erin, HttpMethod.Delete, path, null, string.Concat("\"", asset.Revision + 1, "\""))).Dispose();
 
         using (var details = await erin.GetAsync(new Uri(path, UriKind.Relative), Api.Ct))
         {
