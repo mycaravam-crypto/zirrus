@@ -23,6 +23,7 @@ public sealed class MetadataValidationTests
     [InlineData("""{"title":"Harbour","creators":["Ada"],"tags":[],"rating":2.5,"published":false,"captured":"2026-11-26"}""")]
     [InlineData("""{"title":"Hafen","creators":["Ada","Lin"],"captured":"2026-11-26T10:30:00+01:00"}""")]
     [InlineData("""{"title":"Hafen","creators":["Ada"],"captured":"2026-11-26T10:30:00Z"}""")]
+    [InlineData("""{"title":"Hafen","creators":["Ada"],"captured":"2026-11-26T10:30:00-05:00"}""")]
     public void Valid_values_pass(string json) =>
         MetadataValidation.Validate(AssetMetadata.Parse(json), Schema);
 
@@ -40,6 +41,8 @@ public sealed class MetadataValidationTests
     [InlineData("""{"title":"Hafen","creators":["Ada"],"published":1}""")]
     [InlineData("""{"title":"Hafen","creators":["Ada"],"captured":"2026-02-30"}""")]
     [InlineData("""{"title":"Hafen","creators":["Ada"],"captured":"2026-11-26T10:30:00"}""")]
+    [InlineData("""{"title":["Hafen"],"creators":["Ada"]}""")]
+    [InlineData("""{"title":"Hafen","creators":["Ada"],"tags":null}""")]
     public void Invalid_values_fail(string json) =>
         Assert.Throws<ArgumentException>(() => MetadataValidation.Validate(AssetMetadata.Parse(json), Schema));
 }
