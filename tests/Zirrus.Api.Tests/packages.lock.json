@@ -787,6 +787,12 @@
           "Zirrus.Domain": "[1.0.0, )"
         }
       },
+      "zirrus.renderer": {
+        "type": "Project",
+        "dependencies": {
+          "Zirrus.Infrastructure": "[1.0.0, )"
+        }
+      },
       "AWSSDK.S3": {
         "type": "CentralTransitive",
         "requested": "[4.1.2.1, )",

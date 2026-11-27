@@ -74,7 +74,8 @@ public static class DependencyInjection
 
     /// <summary>
     /// Adds the ingestion pipeline for the worker: the PostgreSQL job queue, ClamAV scanner
-    /// (<c>Scanner</c> section), SkiaSharp renderer and the metadata extractor.
+    /// (<c>Scanner</c> section), the renderer (the isolated service at <c>Renderer:Url</c>, or
+    /// in-process SkiaSharp when no URL is set) and the metadata extractor.
     /// </summary>
     /// <param name="services">Service collection.</param>
     /// <param name="configuration">Application configuration.</param>
@@ -87,7 +88,20 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException($"Connection string '{ConnectionStringName}' is not configured.")));
         services.AddSingleton<IJobQueue, NpgsqlJobQueue>();
         services.AddSingleton<IMalwareScanner>(_ => new ClamAvScanner(configuration.GetSection("Scanner").Get<ClamAvOptions>() ?? new ClamAvOptions()));
-        services.AddSingleton<IImageRenderer, SkiaImageRenderer>();
+        var renderer = configuration.GetSection("Renderer").Get<RendererClientOptions>() ?? new RendererClientOptions();
+        if (string.IsNullOrWhiteSpace(renderer.Url))
+        {
+            services.AddSingleton<IImageRenderer, SkiaImageRenderer>(); // in-process: tests and development only
+        }
+        else
+        {
+            services.AddHttpClient<IImageRenderer, HttpImageRenderer>(client =>
+            {
+                client.BaseAddress = new Uri(renderer.Url);
+                client.Timeout = renderer.Timeout;
+            });
+        }
+
         services.AddSingleton<IMetadataExtractor, NoMetadataExtractor>(); // MetadataExtractor awaits the XmpCore review (#20)
         services.AddScoped<IngestionPipeline>();
         return services;

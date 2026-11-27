@@ -11,6 +11,12 @@ if (await HostingExtensions.RunHealthProbeIfRequestedAsync(args) is { } probeExi
 var builder = WebApplication.CreateSlimBuilder(args);
 builder.Configuration.AddZirrusSecrets();
 builder.Services.AddZirrusInfrastructure(builder.Configuration);
+if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(builder.Configuration["Renderer:Url"]))
+{
+    // Parsers handle untrusted files: outside Development they run only in the isolated renderer service.
+    throw new InvalidOperationException("Renderer:Url is required outside Development (isolated parser, ingestion-api-ui.md).");
+}
+
 builder.Services.AddZirrusIngestion(builder.Configuration);
 builder.Services.Configure<IngestionSettings>(builder.Configuration.GetSection("Ingestion"));
 builder.Services.AddHostedService<IngestionWorker>();

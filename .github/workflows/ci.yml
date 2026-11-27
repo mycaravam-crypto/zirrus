@@ -147,6 +147,8 @@ jobs:
         run: |
           python3 -m pip install --quiet --user requests==2.34.2
           python3 -I tools/ci/e2e-auth.py
+      - name: Ingestion fault test (Q5, worker killed during processing)
+        run: python3 -I tools/ci/ingestion-load.py faults --count 10 --kills 3
       - name: Logs on failure
         if: failure()
         run: docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml logs --no-color

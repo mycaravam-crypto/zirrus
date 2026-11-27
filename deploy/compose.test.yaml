@@ -29,6 +29,11 @@ services:
     depends_on:
       keycloak: { condition: service_healthy }
 
+  worker:
+    environment:
+      # Short leases so jobs of a killed worker return quickly in the fault test (production: 2 min).
+      Ingestion__Lease: "00:00:15"
+
   web:
     environment:
       ZIRRUS_SITE_ADDRESS: http://localhost

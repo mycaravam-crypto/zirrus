@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Zirrus.Api\Zirrus.Api.csproj" />
+    <ProjectReference Include="..\..\src\Zirrus.Renderer\Zirrus.Renderer.csproj" Aliases="renderer" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />

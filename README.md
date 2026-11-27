@@ -65,6 +65,9 @@ Set `ZIRRUS_SITE_ADDRESS` to a domain name for automatic HTTPS. For local develo
   - **Failures:** transient failures retry three times with backoff, then the job is dead-lettered. Editors call `POST …/assets/{assetId}/retry`.
 - **Downloads:** `GET …/assets/{assetId}/content` supports one byte range per request, and `GET …/renditions/{thumbnail|preview}` serves the renditions. Both answer for active assets only, with `Cache-Control: private, no-store`.
 - **ClamAV:** the `clamav` service needs outbound access for signature updates. Until it is healthy, scans retry.
+- **Isolated parser:** the worker sends originals to the `renderer` service (`Renderer__Url`), which has no secrets and no route to the database or the internet. It decodes each file in a fresh child process (`Parser__Timeout`, 60 s; `Parser__MaxMemoryBytes`, 512 MiB). Outside Development the worker refuses to start without it.
+- **Load tests:** `tools/ci/ingestion-load.py faults` kills the worker during processing (CI); `soak` checks Q2 throughput (nightly `ingestion-soak` workflow).
+- **Tests without Docker:** set `ZIRRUS_TEST_CLAMAV=host:port` to point the real-clamd tests at an existing daemon.
 
 ## Adding a database migration
 ```bash
