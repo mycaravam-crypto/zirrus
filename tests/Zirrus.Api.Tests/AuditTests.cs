@@ -162,6 +162,11 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
         var appConnection = new NpgsqlConnectionStringBuilder(fixture.ConnectionString) { Username = "zirrus_app", Password = AppPassword }.ConnectionString;
         await using var app = new NpgsqlConnection(appConnection);
         await app.OpenAsync(Api.Ct);
+        Assert.Equal("zirrus_app", await Scalar<string>(app, "SELECT current_user"));
+        Assert.False(await Scalar<bool>(app, "SELECT rolsuper FROM pg_roles WHERE rolname = current_user"));
+        Assert.False(await Scalar<bool>(app, "SELECT pg_has_role(current_user, 'postgres', 'MEMBER')"));
+        Assert.NotEqual("zirrus_app", await Scalar<string>(app,
+            "SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid = 'audit_events'::regclass"));
 
         await Execute(app, $"""
             INSERT INTO audit_events (id, organization_id, actor, action, outcome, occurred_at, correlation_id)
