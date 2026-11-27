@@ -34,7 +34,7 @@ All ungranted catalogs are denied except for the organization administrator. Tes
   - Each entry is staged in the request's unit of work and committed **in the same transaction** as the change, so a rejected or rolled-back change leaves no entry and a committed change always has one.
   - Authenticated API requests ending in 403 or 404 are recorded independently after the response. The event contains the actor, route template, method, catalog/resource IDs when available, outcome and correlation ID; it never stores request bodies, query values or raw resource paths. Anonymous 401 responses are not attributed to a user and are not recorded.
 - **Integrity** (implemented, AuditHardening migration):
-  - **Roles:** the API and worker connect as `zirrus_app`. It has DML on application tables but only `INSERT` and `SELECT` on `audit_events` and `audit_digests`, no access to the migration history, and no right to run the purge. Migrations and the `db-roles` deployment job use the owner account.
+  - **Roles:** the API and worker connect as `zirrus_app`. It has DML on application tables but only `INSERT` and `SELECT` on `audit_events` and `audit_digests`, no access to the purge-evidence ledger or migration history, and no right to run the purge. Migrations and the `db-roles` deployment job use the owner account.
   - **Append-only for every role:** triggers reject `UPDATE`, `DELETE` and `TRUNCATE` on `audit_events`, `audit_digests` and the `audit_purged_events` evidence ledger, including for the owner. The only deletion path for events is `audit_purge(before)`, a `SECURITY DEFINER` function the maintenance (owner) role runs for retention.
   - **Signed digests:** the worker seals new events (after a 5-minute safety lag) into a digest. The digest is SHA-256 over the previous digest and a canonical line per event, signed with HMAC-SHA256 under `Audit:DigestKey`. It is stored in `audit_digests` and also written to `Audit:ExportDirectory`, which should be backed up off-host.
   - **Verification:** each run re-verifies recent digests. A changed, inserted or removed sealed event, a broken chain or a wrong signature is logged as critical. The retention function records each deleted event sequence and ID in the append-only `audit_purged_events` ledger before deletion. A missing event is classified as a legitimate purge only when that exact sequence has ledger evidence and the original event count reconciles; a missing leading prefix by itself is a mismatch. The ledger contains identifiers and timestamps, not the event payload.
@@ -44,6 +44,7 @@ All ungranted catalogs are denied except for the organization administrator. Tes
   - the owner cannot change audit records;
   - `zirrus_app` cannot update, delete, truncate or purge;
   - a tampered sealed record is detected;
+  - a missing leading event without purge evidence is detected, while an authorized purge is distinguished using the append-only purge ledger;
   - authenticated 403 and resource-hiding 404 responses are audited without request payloads.
 - **Content:** no secrets, raw tokens or unnecessary personal data. Protect logs and define incident access.
 - **Retention:** proposed 180 days for audit and 30 days for soft-deleted originals. Confirm policy and legal basis; document deletion requests and backup expiry.
