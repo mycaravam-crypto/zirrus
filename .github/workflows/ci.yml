@@ -149,7 +149,7 @@ jobs:
           python3 -I tools/ci/e2e-auth.py
       - name: Ingestion fault test (Q5, worker killed during processing)
         run: |
-          sudo apt-get install -y -qq --no-install-recommends imagemagick > /dev/null  # generates the test images
+          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends imagemagick > /dev/null  # generates the test images
           python3 -I tools/ci/ingestion-load.py faults --count 10 --kills 3
       - name: Logs on failure
         if: failure()

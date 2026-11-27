@@ -32,7 +32,7 @@ jobs:
           MINUTES: ${{ inputs.minutes || '15' }}
           PER_MINUTE: ${{ inputs.per_minute || '10' }}
         run: |
-          sudo apt-get install -y -qq --no-install-recommends imagemagick > /dev/null  # generates the test images
+          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends imagemagick > /dev/null  # generates the test images
           python3 -m pip install --quiet --user requests==2.34.2
           python3 -I tools/ci/ingestion-load.py soak --minutes "$MINUTES" --per-minute "$PER_MINUTE"
       - name: Resource usage
