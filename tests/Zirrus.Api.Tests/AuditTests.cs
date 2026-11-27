@@ -97,7 +97,7 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
         }
 
         await using var check = fixture.CreateContext();
-        var events = await check.Set<AuditEvent>().Where(e => e.CatalogId == catalogId).OrderBy(e => e.Seq).ToListAsync(Api.Ct);
+        var events = await check.Set<AuditEvent>().Where(e => e.CatalogId == catalogId && e.Action != AuditActions.AccessDenied).OrderBy(e => e.Seq).ToListAsync(Api.Ct);
         Assert.Equal(
             [
                 (AuditActions.CatalogCreate, "alice", (Guid?)catalogId),
@@ -181,6 +181,40 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
             var error = await Assert.ThrowsAsync<PostgresException>(() => Execute(app, sql));
             Assert.Contains(error.SqlState, new[] { PostgresErrorCodes.InsufficientPrivilege, "42501" });
         }
+    }
+
+    /// <summary>Authenticated 403 and resource-hiding 404 responses are audited without request payloads.</summary>
+    [Fact]
+    public async Task Denied_api_requests_are_audited_without_sensitive_payloads()
+    {
+        using var admin = fixture.Api.ClientAs("alice,admin");
+        using var created = await Api.SendAsync(admin, HttpMethod.Post, "/api/v1/catalogs", new { name = $"Denied {Guid.NewGuid():N}" });
+        var catalogId = (await created.Content.ReadFromJsonAsync<JsonElement>(Api.Ct)).GetProperty("id").GetGuid();
+        using var granted = await Api.SendAsync(admin, HttpMethod.Put, $"/api/v1/catalogs/{catalogId}/members/viewer", new { role = "viewer" });
+        Assert.Equal(HttpStatusCode.OK, granted.StatusCode);
+
+        using var viewer = fixture.Api.ClientAs("viewer");
+        using var forbidden = await Api.SendAsync(viewer, HttpMethod.Post,
+            $"/api/v1/catalogs/{catalogId}/categories", new { name = "Sensitive category name" });
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+
+        var missingAssetId = Guid.NewGuid();
+        using var missing = await viewer.GetAsync(new Uri(
+            $"/api/v1/catalogs/{catalogId}/assets/{missingAssetId}", UriKind.Relative), Api.Ct);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+
+        await using var db = fixture.CreateContext();
+        var denied = await db.Set<AuditEvent>()
+            .Where(e => e.CatalogId == catalogId && e.Action == AuditActions.AccessDenied && e.Actor == "viewer")
+            .OrderBy(e => e.Seq)
+            .ToListAsync(Api.Ct);
+
+        Assert.Equal(2, denied.Count);
+        Assert.All(denied, e => Assert.Equal("denied", e.Outcome));
+        Assert.Contains("method=POST", denied[0].Detail, StringComparison.Ordinal);
+        Assert.Contains("method=GET", denied[1].Detail, StringComparison.Ordinal);
+        Assert.Equal(missingAssetId, denied[1].ResourceId);
+        Assert.DoesNotContain("Sensitive category name", string.Join('\n', denied.Select(e => e.Detail)));
     }
 
     private Task<Guid> InsertEventAsync(DateTimeOffset occurredAt) => InsertEventAsync(fixture, occurredAt);
