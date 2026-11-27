@@ -39,8 +39,11 @@ Reconciliation verifies missing blobs, orphan temp files, pending transitions an
 ## Search
 - **Indexes:** PostgreSQL FTS with GIN tsvector, pg_trgm for optional typo tolerance, B-tree on catalog/state/updated_at, and selected JSONB expression indexes.
 - **Permissions:** query only active assets in authorized catalogs, and apply the permission scope before results, counts/facets and pagination.
-- **Safety:** parameterized queries, allowlisted fields and sort; a stable cursor includes the sort value and ID.
+- **Safety:** parameterized queries, allowlisted fields and sort; a stable cursor includes the sort value and ID. Once a catalog has a metadata schema, metadata filters may only name its fields.
+- **Facets:** `GET …/assets/facets` returns the total and per-category counts for the same filters, with the same scope as the result list.
 - **Language:** English/German configurations selected by language where known, with a simple fallback; test stemming and diacritics.
 - **Consistency:** index updates happen synchronously in the same transaction for MVP metadata, so there is no external index lag.
 
-Proposed targets: search p95 ≤ 500 ms and filtering p95 ≤ 750 ms on the #12 workload. Benchmark seeded assets, mixed catalog grants, cold/warm cache and concurrent traffic using EXPLAIN ANALYZE and a load harness. Consider OpenSearch only if tuned PostgreSQL repeatedly misses the agreed thresholds on reference hardware and cost/benefit supports the change. Results pending.
+Proposed targets: search p95 ≤ 500 ms and filtering p95 ≤ 750 ms on the #12 workload. Benchmark seeded assets, mixed catalog grants, cold/warm cache and concurrent traffic using EXPLAIN ANALYZE and a load harness. Consider OpenSearch only if tuned PostgreSQL repeatedly misses the agreed thresholds on reference hardware and cost/benefit supports the change.
+
+**Results (2026-11-27):** keyword p95 170 ms and filter p95 35 ms through the API with 10 concurrent users on the 100k-asset workload, 0 unexpected responses, and the ungranted catalog never reachable. Plans, language tests and the migration thresholds are in [search-benchmark.md](search-benchmark.md). The `search-benchmark` workflow re-checks Q1 nightly.

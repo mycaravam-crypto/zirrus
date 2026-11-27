@@ -1,0 +1,44 @@
+# Q1 search benchmark (W5 #25): 10 concurrent users without think time against the #12 reference
+# workload (100,000 assets, 3 catalogs, mixed grants) through the API, PostgreSQL 18 via Testcontainers.
+# Fails when keyword p95 > 500 ms, filter p95 > 750 ms, >= 1% unexpected responses, or when the
+# ungranted catalog is ever reachable (Q3). Too long for every PR, so it runs nightly and on demand.
+name: search-benchmark
+
+on:
+  schedule:
+    - cron: "43 3 * * *"
+  workflow_dispatch:
+    inputs:
+      seconds: { description: "Load duration in seconds", default: "60" }
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with: { global-json-file: global.json }
+      - name: Restore (locked)
+        run: dotnet restore Zirrus.slnx --locked-mode
+      - name: Build
+        run: dotnet build Zirrus.slnx -c Release --no-restore
+      - name: Benchmark
+        env:
+          ZIRRUS_BENCH: "1"
+          ZIRRUS_BENCH_SECONDS: ${{ inputs.seconds || '60' }}
+          ZIRRUS_BENCH_OUT: ${{ runner.temp }}/search-benchmark.md
+        run: dotnet test --project tests/Zirrus.Api.Tests -c Release --no-build --filter-class Zirrus.Api.Tests.SearchBenchmark
+      - name: Report
+        if: always()
+        run: |
+          nproc
+          if [ -f "$RUNNER_TEMP/search-benchmark.md" ]; then cat "$RUNNER_TEMP/search-benchmark.md" >> "$GITHUB_STEP_SUMMARY"; fi
