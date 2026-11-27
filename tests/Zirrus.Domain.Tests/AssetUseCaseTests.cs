@@ -110,6 +110,15 @@ public sealed class AssetUseCaseTests
     }
 
     [Fact]
+    public async Task Stale_revision_takes_precedence_over_invalid_metadata()
+    {
+        _assets.Schema = MetadataSchema.Create(_press, 1, [new("title", "Title", MetadataFieldType.Text, Required: true)], Now);
+        var result = await For("erin").UpdateMetadataAsync(_press.Id, _active.Id, "{}", _active.Revision - 1, Ct);
+        Assert.Equal(OperationStatus.PreconditionFailed, result.Status);
+        Assert.Equal(0, _assets.Saves);
+    }
+
+    [Fact]
     public async Task Configured_schema_accepts_valid_edits()
     {
         _assets.Schema = MetadataSchema.Create(_press, 1, [new("title", "Title", MetadataFieldType.Text, Required: true)], Now);
