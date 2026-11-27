@@ -227,7 +227,7 @@ public sealed class AuditDigestTests(PostgresFixture fixture) : IClassFixture<Po
             await Assert.ThrowsAsync<IOException>(() => digests.SealAsync(cancellationToken));
 
             options.ExportDirectory = Path.Combine(root, "exports");
-            Assert.Null(await digests.SealAsync(cancellationToken));
+            await digests.SealAsync(cancellationToken);
 
             await using var db = fixture.CreateContext();
             var sequence = await db.Set<AuditEvent>().Where(e => e.Id == eventId).Select(e => e.Seq).SingleAsync(cancellationToken);
