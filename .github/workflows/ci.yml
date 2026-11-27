@@ -159,6 +159,25 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm --filter @zirrus/web exec playwright install --with-deps chromium
           pnpm --filter @zirrus/web e2e
+      - name: Audit trail in the running stack (W7, Q10)
+        run: |
+          set -euo pipefail
+          psql_as() { docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml exec -T -e PGPASSWORD="$2" postgres \
+            psql -h localhost -U "$1" -d zirrus -v ON_ERROR_STOP=1 -At -c "$3"; }
+          owner="$(cat deploy/secrets/postgres_password)"
+          app="$(cat deploy/secrets/app_db_password)"
+          # The journeys above ran as zirrus_app; their actions must be in the audit trail.
+          for action in session.sign_in session.sign_out asset.upload asset.metadata_update category.create category.assign catalog.member_grant; do
+            count=$(psql_as zirrus "$owner" "SELECT count(*) FROM audit_events WHERE action = '$action'")
+            test "$count" -ge 1 || { echo "::error::no audit event for $action"; exit 1; }
+          done
+          # The application role reads and inserts but cannot change or remove audit records.
+          psql_as zirrus_app "$app" "SELECT count(*) FROM audit_events" > /dev/null
+          for sql in "UPDATE audit_events SET actor = 'x'" "DELETE FROM audit_events" "SELECT audit_purge(now())"; do
+            if out=$(psql_as zirrus_app "$app" "$sql" 2>&1); then echo "::error::zirrus_app could run: $sql"; exit 1; fi
+            echo "$out" | grep -q "permission denied" || { echo "::error::unexpected error for $sql: $out"; exit 1; }
+          done
+          echo "audit trail checks passed"
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

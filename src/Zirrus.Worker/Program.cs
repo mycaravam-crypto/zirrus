@@ -22,6 +22,8 @@ builder.Services.Configure<IngestionSettings>(builder.Configuration.GetSection("
 builder.Services.AddHostedService<IngestionWorker>();
 builder.Services.Configure<ReconciliationSettings>(builder.Configuration.GetSection("Reconciliation"));
 builder.Services.AddHostedService<ReconciliationService>();
+builder.Services.Configure<AuditDigestSettings>(builder.Configuration.GetSection("Audit"));
+builder.Services.AddHostedService<AuditDigestService>();
 
 var app = builder.Build();
 app.MapZirrusHealthChecks();

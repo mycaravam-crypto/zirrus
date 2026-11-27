@@ -1,3 +1,4 @@
+using Zirrus.Application.Audit;
 using System.Text.Json;
 using Zirrus.Application.Catalogs;
 using Zirrus.Application.Storage;
@@ -184,7 +185,8 @@ public sealed record AssetContent(BlobRead Read, string MediaType, string FileNa
 /// <param name="access">Catalog permission checks.</param>
 /// <param name="time">Time source.</param>
 /// <param name="blobs">Blob store for downloads.</param>
-public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, TimeProvider time, IBlobStore blobs)
+/// <param name="audit">Audit log; entries are committed with the change they describe.</param>
+public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, TimeProvider time, IBlobStore blobs, IAuditLog audit)
 {
     private const string NotFound = "Asset not found.";
 
@@ -380,6 +382,7 @@ public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, Time
 
         // The revision check above covers stale clients; the store's concurrency token covers two
         // writers that loaded the same revision at the same time.
+        audit.Record(new AuditEntry(AuditActions.MetadataUpdate, access.Subject!, access.OrganizationId, catalogId, asset.Id, $"revision={asset.Revision}"));
         return await assets.TrySaveChangesAsync(cancellationToken)
             ? OperationResult.Ok(AssetDetails.From(asset))
             : OperationResult.Fail<AssetDetails>(OperationStatus.PreconditionFailed, "The asset was changed by another request.");

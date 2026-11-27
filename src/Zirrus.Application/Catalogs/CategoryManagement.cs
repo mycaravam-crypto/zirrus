@@ -1,3 +1,4 @@
+using Zirrus.Application.Audit;
 using Zirrus.Application.Identity;
 using Zirrus.Domain.Assets;
 using Zirrus.Domain.Catalogs;
@@ -44,8 +45,9 @@ public sealed record CategoryDetails(Guid Id, Guid? ParentId, string Name);
 /// <param name="users">Current user.</param>
 /// <param name="organization">Organization context.</param>
 /// <param name="time">Time source.</param>
+/// <param name="audit">Audit log; entries are committed with the change they describe.</param>
 public sealed class CategoryManagement(ICategoryStore store, CatalogAccess access, ICurrentUserAccessor users,
-    OrganizationContext organization, TimeProvider time)
+    OrganizationContext organization, TimeProvider time, IAuditLog audit)
 {
     /// <summary>Reads the category tree as a flat list of parent-linked nodes.</summary>
     public async Task<OperationResult<IReadOnlyList<CategoryDetails>>> ListAsync(Guid catalogId, CancellationToken cancellationToken)
@@ -96,6 +98,7 @@ public sealed class CategoryManagement(ICategoryStore store, CatalogAccess acces
             return OperationResult.Fail<CategoryDetails>(OperationStatus.Invalid, ex.Message);
         }
 
+        audit.Record(new AuditEntry(AuditActions.CategoryCreate, users.User!.Subject, organization.Id, catalogId, category.Id));
         return await store.TryAddAsync(category, cancellationToken)
             ? OperationResult.Ok(ToDetails(category))
             : OperationResult.Fail<CategoryDetails>(OperationStatus.Conflict, "A sibling category with this name exists.");
@@ -121,6 +124,7 @@ public sealed class CategoryManagement(ICategoryStore store, CatalogAccess acces
             return OperationResult.Fail<CategoryDetails>(OperationStatus.NotFound, "Active asset or category not found.");
         }
 
+        audit.Record(new AuditEntry(AuditActions.CategoryAssign, access.Subject!, organization.Id, catalogId, asset.Id, $"category={category.Id}"));
         return await store.AssignAsync(AssetCategory.Assign(asset, category, time.GetUtcNow()), cancellationToken)
             ? OperationResult.Ok(ToDetails(category))
             : OperationResult.Fail<CategoryDetails>(OperationStatus.NotFound, "Active asset or category not found.");
@@ -167,6 +171,7 @@ public sealed class CategoryManagement(ICategoryStore store, CatalogAccess acces
             return OperationResult.Fail<IReadOnlyList<CategoryDetails>>(OperationStatus.NotFound, "Asset not found.");
         }
 
+        audit.Record(new AuditEntry(AuditActions.CategoryUnassign, access.Subject!, organization.Id, catalogId, assetId, $"category={categoryId}"));
         await store.UnassignAsync(catalogId, assetId, categoryId, cancellationToken);
         var remaining = await store.ListForAssetAsync(catalogId, assetId, cancellationToken);
         return OperationResult.Ok<IReadOnlyList<CategoryDetails>>(remaining.Select(ToDetails).ToList());

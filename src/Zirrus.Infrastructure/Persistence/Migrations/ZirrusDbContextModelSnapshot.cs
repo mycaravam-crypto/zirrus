@@ -532,6 +532,119 @@ namespace Zirrus.Infrastructure.Persistence.Migrations
                     b.ToTable("organizations", (string)null);
                 });
 
+            modelBuilder.Entity("Zirrus.Infrastructure.Audit.AuditDigest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("EventCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("event_count");
+
+                    b.Property<long>("FromSeq")
+                        .HasColumnType("bigint")
+                        .HasColumnName("from_seq");
+
+                    b.Property<string>("Hmac")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("hmac");
+
+                    b.Property<string>("KeyId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("key_id");
+
+                    b.Property<string>("PreviousSha256")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("previous_sha256");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("sha256");
+
+                    b.Property<long>("ToSeq")
+                        .HasColumnType("bigint")
+                        .HasColumnName("to_seq");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("audit_digests", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
+            modelBuilder.Entity("Zirrus.Infrastructure.Audit.AuditEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("action");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("actor");
+
+                    b.Property<Guid?>("CatalogId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("catalog_id");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<string>("Detail")
+                        .HasColumnType("text")
+                        .HasColumnName("detail");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("outcome");
+
+                    b.Property<Guid?>("ResourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resource_id");
+
+                    b.Property<long>("Seq")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("seq");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Seq"));
+
+                    b.HasKey("Id");
+
+                    b.ToTable("audit_events", null, t =>
+                        {
+                            t.ExcludeFromMigrations();
+                        });
+                });
+
             modelBuilder.Entity("Zirrus.Infrastructure.Identity.SessionRecord", b =>
                 {
                     b.Property<string>("Key")

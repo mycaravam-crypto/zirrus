@@ -29,8 +29,21 @@ All ungranted catalogs are denied except for the organization administrator. Tes
 | Elevation/SSRF | deny default, no referenced URL fetch, no parser network | negative role and network tests |
 
 ## Audit and retention
-- **Events:** ID, actor, action, resource, outcome, UTC timestamp, correlation ID.
-- **Integrity:** the application database role is insert-only on the audit table; a restricted maintenance role handles retention. A periodic signed digest is exported to a separate restricted backup location. Privileged-operator risk is assessed; absolute immutability is not claimed.
+- **Events:** ID, actor, action, resource, outcome, UTC timestamp, correlation ID, and short non-secret detail (for example a granted role).
+- **Recorded actions** (`AuditActions`): sign-in and sign-out; upload, metadata change, retry and soft delete of assets; catalog creation; role grant and revoke; schema creation; category creation, assignment and removal.
+  - Each entry is staged in the request's unit of work and committed **in the same transaction** as the change, so a rejected or rolled-back change leaves no entry and a committed change always has one.
+  - Denied attempts are answered with 403 or 404 and are not recorded.
+- **Integrity** (implemented, AuditHardening migration):
+  - **Roles:** the API and worker connect as `zirrus_app`. It has DML on application tables but only `INSERT` and `SELECT` on `audit_events` and `audit_digests`, no access to the migration history, and no right to run the purge. Migrations and the `db-roles` deployment job use the owner account.
+  - **Append-only for every role:** a trigger rejects `UPDATE`, `DELETE` and `TRUNCATE` on both audit tables, including for the owner. The only deletion path is `audit_purge(before)`, a `SECURITY DEFINER` function the maintenance (owner) role runs for retention.
+  - **Signed digests:** the worker seals new events (after a 5-minute safety lag) into a digest. The digest is SHA-256 over the previous digest and a canonical line per event, signed with HMAC-SHA256 under `Audit:DigestKey`. It is stored in `audit_digests` and also written to `Audit:ExportDirectory`, which should be backed up off-host.
+  - **Verification:** each run re-verifies recent digests. A changed, removed or inserted sealed event, a broken chain or a wrong signature is logged as critical. Events removed by the purge are reported as purged, not as tampering.
+  - **Limits:** a privileged operator with the owner account and the digest key could rewrite both. Keeping a copy of the exported digests and the key off-host limits that, but absolute immutability is not claimed.
+- **Evidence (Q10):** `AuditTests` and `AuditDigestTests` (PostgreSQL) cover:
+  - writes through the API are audited;
+  - the owner cannot change audit records;
+  - `zirrus_app` cannot update, delete, truncate or purge;
+  - a tampered sealed record is detected.
 - **Content:** no secrets, raw tokens or unnecessary personal data. Protect logs and define incident access.
 - **Retention:** proposed 180 days for audit and 30 days for soft-deleted originals. Confirm policy and legal basis; document deletion requests and backup expiry.
 

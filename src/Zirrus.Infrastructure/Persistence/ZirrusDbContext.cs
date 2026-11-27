@@ -48,6 +48,7 @@ public sealed class ZirrusDbContext(DbContextOptions<ZirrusDbContext> options) :
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
+        MapAudit(modelBuilder);
 
         modelBuilder.Entity<Organization>(e =>
         {
@@ -274,5 +275,23 @@ public sealed class ZirrusDbContext(DbContextOptions<ZirrusDbContext> options) :
         }
 
         return builder.ToString();
+    }
+
+    private static void MapAudit(ModelBuilder modelBuilder)
+    {
+        // SQL-managed append-only tables (AuditHardening migration): mapped for inserts and reads only.
+        modelBuilder.Entity<Zirrus.Infrastructure.Audit.AuditEvent>(e =>
+        {
+            e.ToTable("audit_events", t => t.ExcludeFromMigrations());
+            e.HasKey(a => a.Id);
+            e.Property(a => a.Seq).ValueGeneratedOnAdd();
+            SnakeCaseColumns(e);
+        });
+        modelBuilder.Entity<Zirrus.Infrastructure.Audit.AuditDigest>(e =>
+        {
+            e.ToTable("audit_digests", t => t.ExcludeFromMigrations());
+            e.HasKey(a => a.Id);
+            SnakeCaseColumns(e);
+        });
     }
 }

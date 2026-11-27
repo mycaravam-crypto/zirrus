@@ -1,3 +1,4 @@
+using Zirrus.Application.Audit;
 using Zirrus.Application.Assets;
 using Zirrus.Application.Catalogs;
 using Zirrus.Domain.Assets;
@@ -11,7 +12,8 @@ namespace Zirrus.Application.Ingestion;
 /// <param name="store">Ingestion writes.</param>
 /// <param name="access">Catalog permissions.</param>
 /// <param name="time">Time source.</param>
-public sealed class RetryAsset(IIngestionStore store, CatalogAccess access, TimeProvider time)
+/// <param name="audit">Audit log; entries are committed with the change they describe.</param>
+public sealed class RetryAsset(IIngestionStore store, CatalogAccess access, TimeProvider time, IAuditLog audit)
 {
     /// <summary>Requeues the stage that stopped.</summary>
     /// <param name="catalogId">Catalog.</param>
@@ -52,8 +54,10 @@ public sealed class RetryAsset(IIngestionStore store, CatalogAccess access, Time
         if (asset.State == AssetState.Failed)
         {
             asset.BeginProcessing(time.GetUtcNow());
-            await store.SaveChangesAsync(cancellationToken);
         }
+
+        audit.Record(new AuditEntry(AuditActions.Retry, access.Subject!, access.OrganizationId, catalogId, asset.Id, $"stage={stage}"));
+        await store.SaveChangesAsync(cancellationToken);
 
         return OperationResult.Ok(AssetDetails.From(asset));
     }

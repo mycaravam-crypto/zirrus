@@ -68,6 +68,16 @@ public static class AuthenticationSetup
                 options.SlidingExpiration = true;
                 options.Events.OnRedirectToLogin = ctx => StatusOnly(ctx, StatusCodes.Status401Unauthorized);
                 options.Events.OnRedirectToAccessDenied = ctx => StatusOnly(ctx, StatusCodes.Status403Forbidden);
+
+                // Fires once per completed sign-in (after the OIDC callback), not per request.
+                options.Events.OnSignedIn = async ctx =>
+                {
+                    if (ctx.Principal?.FindFirstValue("sub") is { } subject)
+                    {
+                        await ctx.HttpContext.RequestServices.GetRequiredService<Zirrus.Infrastructure.Audit.SessionAudit>()
+                            .RecordAsync(Zirrus.Application.Audit.AuditActions.SignIn, subject, ctx.HttpContext.RequestAborted);
+                    }
+                };
             });
 
         // The cookie only carries a session key; tickets live in PostgreSQL (logout ends every copy).

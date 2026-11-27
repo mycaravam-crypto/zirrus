@@ -76,6 +76,9 @@ public sealed class CatalogAccess(ICatalogReader reader, ICurrentUserAccessor us
     /// <summary>The organization every check is scoped to.</summary>
     public Guid OrganizationId => organization.Id;
 
+    /// <summary>Subject of the caller, or null when anonymous.</summary>
+    public string? Subject => users.User?.Subject;
+
     /// <summary>True when the caller may read the catalog (admin, editor or viewer).</summary>
     /// <param name="catalogId">Catalog.</param>
     /// <param name="cancellationToken">Cancels the check.</param>

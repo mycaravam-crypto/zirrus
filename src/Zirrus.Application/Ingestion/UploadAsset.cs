@@ -1,3 +1,4 @@
+using Zirrus.Application.Audit;
 using Zirrus.Application.Assets;
 using Zirrus.Application.Catalogs;
 using Zirrus.Application.Identity;
@@ -48,6 +49,7 @@ public sealed class UploadTooLargeException : IOException
 /// <param name="users">Current user.</param>
 /// <param name="organization">Organization context.</param>
 /// <param name="time">Time source.</param>
+/// <param name="audit">Audit log; entries are committed with the change they describe.</param>
 public sealed class UploadAsset(
     ICatalogStore catalogs,
     IIngestionStore store,
@@ -55,7 +57,8 @@ public sealed class UploadAsset(
     CatalogAccess access,
     ICurrentUserAccessor users,
     OrganizationContext organization,
-    TimeProvider time)
+    TimeProvider time,
+    IAuditLog audit)
 {
     /// <summary>Uploads one file.</summary>
     /// <param name="catalogId">Target catalog.</param>
@@ -125,6 +128,7 @@ public sealed class UploadAsset(
 
         asset.MarkStored(stored.Sha256, stored.SizeBytes, time.GetUtcNow());
         store.Add(JobIntent.ForAsset(asset, PipelineStages.Scan, PipelineStages.Version, time.GetUtcNow()));
+        audit.Record(new AuditEntry(AuditActions.Upload, user.Subject, organization.Id, catalogId, asset.Id, $"type={mediaType}; bytes={stored.SizeBytes}; sha256={stored.Sha256}"));
         await store.SaveChangesAsync(CancellationToken.None);
 
         var duplicates = await store.FindDuplicatesAsync(catalogId, stored.Sha256, asset.Id, cancellationToken);

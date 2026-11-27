@@ -1,3 +1,4 @@
+using Zirrus.Application.Audit;
 using Zirrus.Application.Identity;
 using Zirrus.Domain.Assets;
 using Zirrus.Domain.Catalogs;
@@ -37,8 +38,9 @@ public sealed record SchemaDetails(int Version, IReadOnlyList<MetadataFieldDefin
 /// <param name="users">Current user.</param>
 /// <param name="organization">Organization context.</param>
 /// <param name="time">Time source.</param>
+/// <param name="audit">Audit log; entries are committed with the change they describe.</param>
 public sealed class SchemaAdministration(ISchemaStore store, CatalogAccess access, ICurrentUserAccessor users,
-    OrganizationContext organization, TimeProvider time)
+    OrganizationContext organization, TimeProvider time, IAuditLog audit)
 {
     /// <summary>Reads the current schema for a visible catalog; version zero denotes no schema.</summary>
     public async Task<OperationResult<SchemaDetails>> GetAsync(Guid catalogId, CancellationToken cancellationToken)
@@ -87,6 +89,7 @@ public sealed class SchemaAdministration(ISchemaStore store, CatalogAccess acces
             return OperationResult.Fail<SchemaDetails>(OperationStatus.Invalid, ex.Message);
         }
 
+        audit.Record(new AuditEntry(AuditActions.SchemaCreate, users.User!.Subject, organization.Id, catalogId, schema.Id, $"version={schema.Version}; fields={schema.Fields.Count}"));
         return await store.TryAddAsync(schema, cancellationToken)
             ? OperationResult.Ok(SchemaDetails.From(schema))
             : OperationResult.Fail<SchemaDetails>(OperationStatus.Conflict, "A schema already exists.");

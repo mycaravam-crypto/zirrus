@@ -42,6 +42,22 @@ services:
       postgres: { condition: service_healthy }
     mem_limit: 256m
 
+  # Gives the application role zirrus_app (created by the migrations) its login on every deployment.
+  # The API and worker connect as zirrus_app; only migrations and this job use the owner account.
+  db-roles:
+    image: postgres:18@sha256:64c8b0d31e4ab6ea665e8426ea406a94bf52de3c05b3a4a8bf713704eefa9328
+    <<: *hardening
+    restart: "no"
+    user: "999:999"
+    entrypoint: ["/bin/sh", "/scripts/app-role.sh"]
+    secrets: [postgres_password, app_db_password]
+    volumes:
+      - ./postgres/app-role.sh:/scripts/app-role.sh:ro
+    networks: [data]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    mem_limit: 64m
+
   api:
     build: { context: .., dockerfile: deploy/docker/api.Dockerfile }
     image: zirrus-api:local
@@ -50,7 +66,7 @@ services:
       # Production: set the identity provider (ADR 0007) and supply Auth__ClientSecret as a secret.
       Auth__Authority: ${ZIRRUS_OIDC_AUTHORITY:-}
     secrets:
-      - source: zirrus_db
+      - source: zirrus_app_db
         target: ConnectionStrings__Zirrus
       - source: dataprotection_key
         target: DataProtection__Key
@@ -58,7 +74,7 @@ services:
       - blobs:/var/lib/zirrus/blobs
     networks: [backend, data]
     depends_on:
-      migrate: { condition: service_completed_successfully }
+      db-roles: { condition: service_completed_successfully }
     mem_limit: 512m
     cpus: 2
 
@@ -67,17 +83,22 @@ services:
     image: zirrus-worker:local
     <<: *hardening
     secrets:
-      - source: zirrus_db
+      - source: zirrus_app_db
         target: ConnectionStrings__Zirrus
+      - source: audit_digest_key
+        target: Audit__DigestKey
     environment:
       Scanner__Host: clamav
       Renderer__Url: http://renderer:8080
+      # Signed audit digests (Q10) are also written here; back this volume up off-host (deployment-delivery.md).
+      Audit__ExportDirectory: /var/lib/zirrus/audit
     volumes:
       - blobs:/var/lib/zirrus/blobs
+      - audit_digests:/var/lib/zirrus/audit
     # Not waiting for ClamAV or the renderer: while either is unavailable, stages fail and retry (ingestion-api-ui.md).
     networks: [data, scanner, render]
     depends_on:
-      migrate: { condition: service_completed_successfully }
+      db-roles: { condition: service_completed_successfully }
     mem_limit: 512m
     cpus: 2
 
@@ -142,6 +163,7 @@ volumes:
   pgdata: {}
   # Originals and renditions (managed filesystem store, ADR 0006); back up together with pgdata.
   blobs: {}
+  audit_digests: {}
   clamav_db: {}
   caddy_data: {}
   caddy_config: {}
@@ -151,5 +173,11 @@ secrets:
     file: ./secrets/postgres_password
   zirrus_db:
     file: ./secrets/zirrus_db_connection
+  app_db_password:
+    file: ./secrets/app_db_password
+  zirrus_app_db:
+    file: ./secrets/zirrus_app_db_connection
+  audit_digest_key:
+    file: ./secrets/audit_digest_key
   dataprotection_key:
     file: ./secrets/dataprotection_key
