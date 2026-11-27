@@ -9,8 +9,7 @@ export const meKey = ["me"] as const;
 
 /**
  * Signed-in shell: header with the user and sign-out, then the explorer. Anonymous visitors get a sign-in link.
- * @param props Component props.
- * @param props.client API client.
+ * @param client API client.
  */
 export function App({ client }: { client: ZirrusClient }) {
   const me = useQuery({
@@ -53,8 +52,7 @@ export function App({ client }: { client: ZirrusClient }) {
 
 /**
  * Sign-out is a form POST with the CSRF token, so the API can end the identity-provider session too.
- * @param props Component props.
- * @param props.client API client.
+ * @param client API client.
  */
 function SignOut({ client }: { client: ZirrusClient }) {
   const token = useQuery({

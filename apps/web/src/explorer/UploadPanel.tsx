@@ -9,9 +9,8 @@ type Status = { name: string; message: string; kind: "progress" | "done" | "erro
 
 /**
  * Uploads chosen files one after another with progress; editors only.
- * @param props Component props.
- * @param props.client API client.
- * @param props.catalogId Catalog that receives the uploads.
+ * @param client API client.
+ * @param catalogId Catalog that receives the uploads.
  */
 export function UploadPanel({ client, catalogId }: { client: ZirrusClient; catalogId: string }) {
   const queryClient = useQueryClient();

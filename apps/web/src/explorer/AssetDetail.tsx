@@ -9,12 +9,11 @@ import { MetadataEditor } from "./MetadataEditor";
 
 /**
  * Detail pane: preview, file facts, download, retry and the metadata editor.
- * @param props Component props.
- * @param props.client API client.
- * @param props.catalogId Catalog of the asset.
- * @param props.assetId Asset to show.
- * @param props.canEdit Whether the user may retry and edit (editor or administrator).
- * @param props.onClose Called when the user closes the pane.
+ * @param client API client.
+ * @param catalogId Catalog of the asset.
+ * @param assetId Asset to show.
+ * @param canEdit Whether the user may retry and edit (editor or administrator).
+ * @param onClose Called when the user closes the pane.
  */
 export function AssetDetail({
   client,

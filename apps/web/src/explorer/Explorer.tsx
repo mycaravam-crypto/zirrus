@@ -9,8 +9,7 @@ import { UploadPanel } from "./UploadPanel";
 
 /**
  * Catalog navigation, asset grid, upload and detail pane (W6 explorer).
- * @param props Component props.
- * @param props.client API client.
+ * @param client API client.
  */
 export function Explorer({ client }: { client: ZirrusClient }) {
   const [catalogId, setCatalogId] = useState<string | null>(null);

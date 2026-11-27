@@ -13,11 +13,10 @@ const keyPattern = /^[a-z][a-z0-9_]{0,63}$/;
  * Edits an asset's metadata as text fields. Saves send If-Match with the revision the form was
  * loaded from; a 412 means someone else saved first, and the user reloads instead of overwriting.
  * Structured (non-text) values are kept unchanged until typed fields arrive with W5 (#25).
- * @param props Component props.
- * @param props.client API client.
- * @param props.catalogId Catalog of the asset.
- * @param props.asset Asset with its current revision and metadata.
- * @param props.canEdit Whether the user may edit (editor or administrator).
+ * @param client API client.
+ * @param catalogId Catalog of the asset.
+ * @param asset Asset with its current revision and metadata.
+ * @param canEdit Whether the user may edit (editor or administrator).
  */
 export function MetadataEditor({
   client,
@@ -47,13 +46,12 @@ export function MetadataEditor({
 
 /**
  * The editable form for one revision; remounted when a new revision loads.
- * @param props Component props.
- * @param props.client API client.
- * @param props.catalogId Catalog of the asset.
- * @param props.asset Asset at the revision being edited.
- * @param props.canEdit Whether the user may edit; otherwise a read-only list is shown.
- * @param props.saved Whether this revision is the one the user just saved.
- * @param props.onSaved Called with the new revision after a successful save.
+ * @param client API client.
+ * @param catalogId Catalog of the asset.
+ * @param asset Asset at the revision being edited.
+ * @param canEdit Whether the user may edit; otherwise a read-only list is shown.
+ * @param saved Whether this revision is the one the user just saved.
+ * @param onSaved Called with the new revision after a successful save.
  */
 function Form({
   client,
