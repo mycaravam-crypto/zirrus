@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { AssetSummary, ZirrusClient } from "@zirrus/api-client";
 import { ApiError, assetPath, pendingStates } from "../api";
@@ -23,12 +24,14 @@ export function AssetGrid({
   selected: string | null;
   onSelect: (assetId: string) => void;
 }) {
+  const [draft, setDraft] = useState("");
+  const [search, setSearch] = useState("");
   const assets = useInfiniteQuery({
-    queryKey: assetsKey(catalogId),
+    queryKey: [...assetsKey(catalogId), search],
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
       const { data, response } = await client.GET("/api/v1/catalogs/{catalogId}/assets", {
-        params: { path: { catalogId }, query: { cursor: pageParam } },
+        params: { path: { catalogId }, query: { cursor: pageParam, q: search || undefined } },
       });
       if (data === undefined) throw new ApiError(response.status, "Could not load assets");
       return data;
@@ -38,13 +41,18 @@ export function AssetGrid({
       query.state.data?.pages.some((p) => p.items.some((a) => pendingStates.has(a.state))) ? 3000 : false,
   });
 
-  if (assets.isPending) return <p role="status">{t("app.loading")}</p>;
-  if (assets.isError) return <p role="alert">{t("assets.failed")}</p>;
-  const items = assets.data.pages.flatMap((p) => p.items);
-  if (items.length === 0) return <p>{t("assets.empty")}</p>;
+  const items = assets.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
     <>
+      <form role="search" onSubmit={(event) => { event.preventDefault(); setSearch(draft.trim()); }}>
+        <label htmlFor="asset-search">{t("assets.search")}</label>
+        <input id="asset-search" type="search" maxLength={200} value={draft} onChange={(event) => setDraft(event.target.value)} />
+        <button type="submit">{t("assets.searchSubmit")}</button>
+      </form>
+      {assets.isPending && <p role="status">{t("app.loading")}</p>}
+      {assets.isError && <p role="alert">{t("assets.failed")}</p>}
+      {assets.isSuccess && items.length === 0 && <p>{t(search ? "assets.searchEmpty" : "assets.empty")}</p>}
       <ul className="grid">
         {items.map((asset) => (
           <li key={asset.id}>
