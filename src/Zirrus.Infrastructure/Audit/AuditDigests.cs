@@ -126,26 +126,31 @@ public sealed class AuditDigests(ZirrusDbContext db, IOptions<AuditDigestOptions
             var expectedPrevious = i == 0 ? (digest.FromSeq == 1 ? Genesis : digest.PreviousSha256) : digests[i - 1].Sha256;
             var events = await db.Set<AuditEvent>().AsNoTracking()
                 .Where(e => e.Seq >= digest.FromSeq && e.Seq <= digest.ToSeq).OrderBy(e => e.Seq).ToListAsync(cancellationToken);
-            var status = Status(digest, events, expectedPrevious, key);
+            var purgedSequences = await db.Database.SqlQuery<long>(
+                    $"""SELECT seq AS "Value" FROM audit_purged_events WHERE seq >= {digest.FromSeq} AND seq <= {digest.ToSeq}""")
+                .ToListAsync(cancellationToken);
+            var status = Status(digest, events, purgedSequences, expectedPrevious, key);
             results.Add(new DigestVerification(digest.Id, digest.FromSeq, digest.ToSeq, status));
         }
 
         return results;
     }
 
-    private static DigestStatus Status(AuditDigest digest, List<AuditEvent> events, string expectedPrevious, byte[]? key)
+    private static DigestStatus Status(AuditDigest digest, List<AuditEvent> events, List<long> purgedSequences, string expectedPrevious, byte[]? key)
     {
-        // The retention purge removes the oldest events: a missing leading part (or all) of the range is
-        // purged, not tampered with. Gaps elsewhere still count as a mismatch.
-        if (events.Count < digest.EventCount && (events.Count == 0 || events[0].Seq > digest.FromSeq)
-            && events.Select((e, i) => e.Seq - i).Distinct().Count() <= 1 && (events.Count == 0 || events[^1].Seq == digest.ToSeq))
-        {
-            return DigestStatus.Purged;
-        }
-
         if (key is null || KeyId(key) != digest.KeyId)
         {
             return DigestStatus.UnknownKey;
+        }
+
+        // A missing event is an authorized retention purge only when the purge function left
+        // append-only evidence for that exact sequence. A missing leading prefix alone proves nothing.
+        if (purgedSequences.Count > 0)
+        {
+            var eventSequences = events.Select(e => e.Seq).ToHashSet();
+            var validPurgeEvidence = events.Count + purgedSequences.Count == digest.EventCount
+                && purgedSequences.All(seq => seq >= digest.FromSeq && seq <= digest.ToSeq && !eventSequences.Contains(seq));
+            return validPurgeEvidence ? DigestStatus.Purged : DigestStatus.Mismatch;
         }
 
         var intact = events.Count == digest.EventCount
