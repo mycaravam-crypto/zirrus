@@ -316,6 +316,35 @@ public sealed class AuditDigestTests(PostgresFixture fixture) : IClassFixture<Po
         Assert.Equal(DigestStatus.Purged, (await digests.VerifyAsync(10, Api.Ct))[0].Status);
     }
 
+    /// <summary>A missing leading event is tampering unless the retention function recorded that exact sequence.</summary>
+    [Fact]
+    public async Task Deleting_a_leading_event_without_purge_evidence_is_a_mismatch()
+    {
+        var digests = Digests(DateTimeOffset.UtcNow.AddHours(1));
+        var firstId = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-30));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-20));
+        var digest = await digests.SealAsync(Api.Ct);
+        Assert.NotNull(digest);
+
+        long firstSequence;
+        await using (var db = fixture.CreateContext())
+        {
+            firstSequence = await db.Set<AuditEvent>().Where(e => e.Id == firstId).Select(e => e.Seq).SingleAsync(Api.Ct);
+        }
+
+        await using var owner = new NpgsqlConnection(fixture.ConnectionString);
+        await owner.OpenAsync(Api.Ct);
+        await AuditTests.Execute(owner, $"""
+            ALTER TABLE audit_events DISABLE TRIGGER audit_events_append_only;
+            DELETE FROM audit_events WHERE id = '{firstId}';
+            ALTER TABLE audit_events ENABLE TRIGGER audit_events_append_only;
+            """);
+
+        var result = Assert.Single((await digests.VerifyAsync(100, Api.Ct)).Where(r => r.DigestId == digest!.Id));
+        Assert.Equal(DigestStatus.Mismatch, result.Status);
+        Assert.Equal(firstSequence, digest!.FromSeq);
+    }
+
     private AuditDigests Digests(DateTimeOffset now, string? key = null) =>
         new(fixture.CreateContext(),
             Options.Create(new AuditDigestOptions { DigestKey = key ?? Convert.ToBase64String(new byte[32].Select((_, i) => (byte)i).ToArray()), SafetyLag = TimeSpan.FromMinutes(5) }),
