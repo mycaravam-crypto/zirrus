@@ -88,6 +88,28 @@ internal static class AssetEndpoints
             .Produces<AssetDetails>()
             .ProducesProblem(StatusCodes.Status404NotFound);
 
+        // Soft deletion is revision-checked and committed with its audit event.
+        assets.MapDelete("/{assetId:guid}", async (Guid catalogId, Guid assetId, [FromHeader(Name = "If-Match")] string? ifMatch,
+                DeleteAsset delete, HttpContext http, CancellationToken cancellationToken) =>
+            {
+                if (!TryParseRevision(ifMatch, out var revision))
+                {
+                    return Results.Problem(statusCode: StatusCodes.Status428PreconditionRequired,
+                        title: "If-Match with the asset's ETag is required.");
+                }
+
+                var status = await delete.ExecuteAsync(catalogId, assetId, revision, http.TraceIdentifier, cancellationToken);
+                return status == OperationStatus.Ok ? Results.NoContent() : Problem(status, "Asset deletion failed.");
+            })
+            .WithName("DeleteAsset")
+            .WithSummary("Soft-delete an asset (editors); physical retention is separate")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status412PreconditionFailed)
+            .ProducesProblem(StatusCodes.Status428PreconditionRequired);
+
         // Replaces the asset's user metadata if If-Match carries the current revision.
         assets.MapPut("/{assetId:guid}/metadata", async (Guid catalogId, Guid assetId, [FromHeader(Name = "If-Match")] string? ifMatch,
                 JsonElement metadata, AssetUseCases useCases, HttpContext http, CancellationToken cancellationToken) =>
