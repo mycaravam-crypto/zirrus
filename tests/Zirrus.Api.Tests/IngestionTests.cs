@@ -512,3 +512,67 @@ public sealed class IngestionPipelineTests : IClassFixture<PostgresFixture>, IAs
         }
     }
 }
+
+/// <summary>
+/// Real clamd: the official ClamAV image (pinned like Compose) via Testcontainers, or an existing
+/// daemon from <c>ZIRRUS_TEST_CLAMAV</c> (<c>host:port</c>) when Docker is unavailable.
+/// </summary>
+public sealed class ClamAvFixture : IAsyncLifetime
+{
+    private const string Image = "clamav/clamav:1.5.4";
+    private DotNet.Testcontainers.Containers.IContainer? _container;
+
+    /// <summary>Scanner bound to the daemon.</summary>
+    public ClamAvScanner Scanner { get; private set; } = null!;
+
+    public async ValueTask InitializeAsync()
+    {
+        var endpoint = Environment.GetEnvironmentVariable("ZIRRUS_TEST_CLAMAV");
+        string host;
+        int port;
+        if (string.IsNullOrEmpty(endpoint))
+        {
+            // The image starts freshclam and clamd; clamd logs this line once its signatures are loaded.
+            _container = new DotNet.Testcontainers.Builders.ContainerBuilder(Image)
+                .WithPortBinding(3310, assignRandomHostPort: true)
+                .WithWaitStrategy(DotNet.Testcontainers.Builders.Wait.ForUnixContainer().UntilMessageIsLogged("socket found, clamd started"))
+                .Build();
+            await _container.StartAsync();
+            (host, port) = (_container.Hostname, _container.GetMappedPublicPort(3310));
+        }
+        else
+        {
+            var parts = endpoint.Split(':');
+            (host, port) = (parts[0], int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        Scanner = new ClamAvScanner(new ClamAvOptions { Host = host, Port = port, Timeout = TimeSpan.FromMinutes(1) });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_container is not null)
+        {
+            await _container.DisposeAsync();
+        }
+    }
+}
+
+/// <summary>Our clamd client against a real daemon: EICAR is found, a clean image passes (corpus, W4).</summary>
+/// <param name="fixture">clamd.</param>
+public sealed class RealClamAvTests(ClamAvFixture fixture) : IClassFixture<ClamAvFixture>
+{
+    private const string Eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+
+    [Fact]
+    public async Task Eicar_is_detected()
+    {
+        var result = await fixture.Scanner.ScanAsync(new MemoryStream(Encoding.ASCII.GetBytes(Eicar)), Api.Ct);
+        Assert.False(result.Clean);
+        Assert.Contains("Eicar", result.Signature, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task A_clean_image_passes() =>
+        Assert.True((await fixture.Scanner.ScanAsync(new MemoryStream(Images.Encode(1200, 800, SKEncodedImageFormat.Jpeg)), Api.Ct)).Clean);
+}

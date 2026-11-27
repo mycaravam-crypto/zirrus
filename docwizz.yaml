@@ -19,7 +19,7 @@ check:
 architecture:
   layers:
     api: ["*.Api/*.cs"]
-    host: ["*.Worker/*.cs"]
+    host: ["*.Worker/*.cs", "*.Renderer/*.cs"]
     application: ["*.Application/*.cs"]
     domain: ["*.Domain/*.cs"]
     infrastructure: ["*.Infrastructure/*.cs"]

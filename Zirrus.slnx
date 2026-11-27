@@ -4,6 +4,7 @@
     <Project Path="src/Zirrus.Application/Zirrus.Application.csproj" />
     <Project Path="src/Zirrus.Domain/Zirrus.Domain.csproj" />
     <Project Path="src/Zirrus.Infrastructure/Zirrus.Infrastructure.csproj" />
+    <Project Path="src/Zirrus.Renderer/Zirrus.Renderer.csproj" />
     <Project Path="src/Zirrus.Worker/Zirrus.Worker.csproj" />
   </Folder>
   <Folder Name="/tests/">

@@ -71,13 +71,26 @@ services:
         target: ConnectionStrings__Zirrus
     environment:
       Scanner__Host: clamav
+      Renderer__Url: http://renderer:8080
     volumes:
       - blobs:/var/lib/zirrus/blobs
-    # Not waiting for ClamAV: while it loads signatures, scans fail closed and retry (ingestion-api-ui.md).
-    networks: [data, scanner]
+    # Not waiting for ClamAV or the renderer: while either is unavailable, stages fail and retry (ingestion-api-ui.md).
+    networks: [data, scanner, render]
     depends_on:
       migrate: { condition: service_completed_successfully }
     mem_limit: 512m
+    cpus: 2
+
+  # Isolated parser (W4): decodes untrusted images in a fresh child process per file with a 60 s and
+  # 512 MiB limit. It holds no secrets or volumes and can reach nothing: its only network is internal
+  # and shared with the worker, so a compromised decoder cannot touch PostgreSQL, blobs or the internet.
+  renderer:
+    build: { context: .., dockerfile: deploy/docker/renderer.Dockerfile }
+    image: zirrus-renderer:local
+    <<: *hardening
+    networks: [render]
+    mem_limit: 768m
+    pids_limit: 64
     cpus: 2
 
   # Malware scanner (GPL-2.0, separate service reached over clamd's TCP protocol; nothing is linked).
@@ -122,6 +135,7 @@ networks:
   backend: { internal: true }
   data: { internal: true }
   scanner: { internal: true }
+  render: { internal: true }
   egress: {}
 
 volumes:

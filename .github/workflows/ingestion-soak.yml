@@ -1,0 +1,46 @@
+# Q2 throughput soak (W4 #24): at least 10 roughly 5 MiB JPEGs per minute for 15 minutes through the full
+# Compose stack (Caddy, API, worker, renderer, ClamAV), with no lost assets. Too long for every PR, so it
+# runs nightly and on demand.
+name: ingestion-soak
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      minutes: { description: "Soak duration in minutes", default: "15" }
+      per_minute: { description: "Uploads per minute", default: "10" }
+
+permissions:
+  contents: read
+
+jobs:
+  soak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - name: Create secrets
+        run: deploy/init-secrets.sh
+      - name: Resolve keycloak to the runner
+        run: echo "127.0.0.1 keycloak" | sudo tee -a /etc/hosts
+      - name: Build and start
+        run: docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml up -d --build --wait --wait-timeout 600
+      - name: Soak
+        env:
+          MINUTES: ${{ inputs.minutes || '15' }}
+          PER_MINUTE: ${{ inputs.per_minute || '10' }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends imagemagick > /dev/null  # generates the test images
+          python3 -m pip install --quiet --user requests==2.34.2
+          python3 -I tools/ci/ingestion-load.py soak --minutes "$MINUTES" --per-minute "$PER_MINUTE"
+      - name: Resource usage
+        if: always()
+        run: docker stats --no-stream
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml logs --no-color
+      - name: Tear down
+        if: always()
+        run: docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml down -v

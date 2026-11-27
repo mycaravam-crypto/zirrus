@@ -9,7 +9,7 @@ Issues #7, #8. Proposed.
 
 Initial formats are JPEG, PNG and WebP. Proposed limits: 100 MiB per file and 50 megapixels decoded. Malformed and unsupported files are rejected and the original is preserved.
 
-**Isolation:** the parser subprocess runs non-root in an isolated temporary directory with network denied, a 60 s timeout and a 512 MiB memory limit (to be validated). Filenames are never interpreted as shell commands.
+**Isolation (implemented in W4):** decoding runs in the `renderer` service, which holds no secrets or volumes. Its only network is internal and shared with the worker, so it cannot reach PostgreSQL, blobs or the internet; it is read-only, drops all capabilities and is capped at 768 MiB and 64 processes. Each file is decoded in a fresh child process with an empty environment and a private temporary directory. A watchdog kills the child after 60 s or 512 MiB resident memory, and both count as rejections. Measured peak on a 50 MP JPEG: 127 MiB. Filenames are never interpreted as shell commands.
 
 **Jobs:** the .NET worker claims jobs from the PostgreSQL queue ([ADR 0002](../adr/0002-job-backend.md)).
 - Transient failures retry 3 times with exponential backoff; permanent failures do not retry.
