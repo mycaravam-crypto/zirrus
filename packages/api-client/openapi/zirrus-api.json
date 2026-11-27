@@ -1901,7 +1901,7 @@
         "type": "string",
         "format": "binary"
       },
-      "JsonElement": {},
+      "JsonElement": { },
       "MetadataFieldDefinition": {
         "required": [
           "key",
