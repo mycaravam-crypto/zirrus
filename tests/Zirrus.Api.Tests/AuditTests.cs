@@ -199,6 +199,46 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
 /// <param name="fixture">Database.</param>
 public sealed class AuditDigestTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
 {
+    /// <summary>A committed digest whose export failed is exported on the next run without creating a duplicate.</summary>
+    [Fact]
+    public async Task Failed_digest_export_is_retried_before_sealing_new_events()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"zirrus-audit-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        var blockedPath = Path.Combine(root, "blocked");
+        await File.WriteAllTextAsync(blockedPath, "not a directory");
+        var exportDirectory = blockedPath;
+        var options = new AuditDigestOptions
+        {
+            DigestKey = Convert.ToBase64String(Enumerable.Range(0, 32).Select(i => (byte)i).ToArray()),
+            ExportDirectory = exportDirectory,
+            SafetyLag = TimeSpan.FromMinutes(5),
+        };
+        var digests = new AuditDigests(
+            fixture.CreateContext(),
+            Options.Create(options),
+            new AuditTests.FixedTime(DateTimeOffset.UtcNow.AddHours(1)));
+
+        try
+        {
+            await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-30));
+            await Assert.ThrowsAsync<IOException>(() => digests.SealAsync(Api.Ct));
+
+            options.ExportDirectory = Path.Combine(root, "exports");
+            Assert.Null(await digests.SealAsync(Api.Ct));
+
+            await using var db = fixture.CreateContext();
+            var saved = await db.Set<AuditDigest>().SingleAsync(Api.Ct);
+            var exportPath = Path.Combine(options.ExportDirectory, $"audit-digest-{saved.ToSeq:D12}.json");
+            Assert.True(File.Exists(exportPath));
+            Assert.Contains(saved.Sha256, await File.ReadAllTextAsync(exportPath, Api.Ct));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     /// <summary>Q10: signed digests verify, and a changed or removed sealed record is detected.</summary>
     [Fact]
     public async Task Digests_verify_and_detect_tampering_and_purges()
