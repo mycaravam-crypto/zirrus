@@ -56,7 +56,45 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
         var categoryId = (await category.Content.ReadFromJsonAsync<JsonElement>(Api.Ct)).GetProperty("id").GetGuid();
         (await Api.SendAsync(erin, HttpMethod.Put, $"{path}/categories/{categoryId}")).Dispose();
         (await Api.SendAsync(erin, HttpMethod.Delete, $"{path}/categories/{categoryId}")).Dispose();
-        (await SendWithIfMatch(erin, HttpMethod.Delete, path, null, $"\"{asset.Revision + 1}\"")).Dispose();
+        (await SendWithIfMatch(erin, HttpMethod.Delete, path, null, $"\\"{asset.Revision + 1}\\"")).Dispose();
+
+        using (var details = await erin.GetAsync(new Uri(path, UriKind.Relative), Api.Ct))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, details.StatusCode);
+        }
+
+        using (var original = await erin.GetAsync(new Uri($"{path}/content", UriKind.Relative), Api.Ct))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, original.StatusCode);
+        }
+
+        using (var rendition = await erin.GetAsync(new Uri($"{path}/renditions/thumbnail", UriKind.Relative), Api.Ct))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, rendition.StatusCode);
+        }
+
+        using (var headOriginal = await erin.SendAsync(new HttpRequestMessage(HttpMethod.Head, new Uri($"{path}/content", UriKind.Relative)), Api.Ct))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, headOriginal.StatusCode);
+        }
+
+        using (var headRendition = await erin.SendAsync(new HttpRequestMessage(HttpMethod.Head, new Uri($"{path}/renditions/thumbnail", UriKind.Relative)), Api.Ct))
+        {
+            Assert.Equal(HttpStatusCode.NotFound, headRendition.StatusCode);
+        }
+
+        using (var rangeRequest = new HttpRequestMessage(HttpMethod.Get, new Uri($"{path}/content", UriKind.Relative)))
+        {
+            rangeRequest.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 0);
+            using var ranged = await erin.SendAsync(rangeRequest, Api.Ct);
+            Assert.Equal(HttpStatusCode.NotFound, ranged.StatusCode);
+        }
+
+        using (var list = await erin.GetAsync(new Uri($"/api/v1/catalogs/{catalogId}/assets", UriKind.Relative), Api.Ct))
+        {
+            Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+            Assert.DoesNotContain(asset.Id.ToString(), await list.Content.ReadAsStringAsync(Api.Ct), StringComparison.OrdinalIgnoreCase);
+        }
 
         await using var check = fixture.CreateContext();
         var events = await check.Set<AuditEvent>().Where(e => e.CatalogId == catalogId).OrderBy(e => e.Seq).ToListAsync(Api.Ct);
