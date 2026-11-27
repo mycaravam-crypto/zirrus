@@ -272,6 +272,272 @@
         }
       }
     },
+    "/api/v1/catalogs/{catalogId}/assets": {
+      "post": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Upload a JPEG, PNG or WebP image into quarantine (editors)",
+        "description": "multipart/form-data with one part named 'file'; send the CSRF token in X-CSRF-TOKEN. The format is detected from the content. The response lists duplicates in the catalog by SHA-256.",
+        "operationId": "UploadAsset",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/IFormFile"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Payload Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogs/{catalogId}/assets/{assetId}/retry": {
+      "post": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Retry processing of a failed or stalled asset (editors)",
+        "operationId": "RetryAsset",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogs/{catalogId}/assets/{assetId}/content": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Download the original of an active asset, optionally a byte range",
+        "operationId": "DownloadAsset",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "206": {
+            "description": "Partial Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Range Not Satisfiable"
+          }
+        }
+      }
+    },
+    "/api/v1/catalogs/{catalogId}/assets/{assetId}/renditions/{kind}": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Download the thumbnail or preview of an active asset",
+        "operationId": "GetRendition",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/catalogs/{catalogId}/assets/{assetId}": {
       "get": {
         "tags": [
@@ -643,6 +909,10 @@
         },
         "description": "The signed-in user, as returned by `GET /api/v1/me`."
       },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
+      },
       "JsonElement": { },
       "ProblemDetails": {
         "type": "object",
@@ -694,6 +964,28 @@
           }
         },
         "description": "Request to grant or change a catalog role."
+      },
+      "UploadResult": {
+        "required": [
+          "asset",
+          "duplicates"
+        ],
+        "type": "object",
+        "properties": {
+          "asset": {
+            "description": "The quarantined asset.",
+            "$ref": "#/components/schemas/AssetDetails"
+          },
+          "duplicates": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Other assets in the same catalog with the same SHA-256 (reported, not refused)."
+          }
+        },
+        "description": "An accepted upload."
       }
     }
   },

@@ -118,9 +118,9 @@ jobs:
         with: { name: sbom, path: sbom/ }
 
   compose-smoke:
-    name: compose smoke and end-to-end sign-in (clean host, Keycloak)
+    name: compose smoke and end-to-end sign-in and ingestion (clean host, Keycloak, ClamAV)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -129,7 +129,7 @@ jobs:
       - name: Resolve keycloak to the runner (one issuer URL for browser and API)
         run: echo "127.0.0.1 keycloak" | sudo tee -a /etc/hosts
       - name: Build and start (waits for health checks)
-        run: docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml up -d --build --wait --wait-timeout 300
+        run: docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml up -d --build --wait --wait-timeout 600
       - name: Smoke checks through Caddy
         run: |
           set -euo pipefail
@@ -143,7 +143,7 @@ jobs:
           # Keycloak exists only in the test override; among ZIRRUS services only web may publish ports.
           test "$published" = "keycloak web" || { echo "::error::unexpected published ports: $published"; exit 1; }
           echo "smoke test passed"
-      - name: End-to-end sign-in against Keycloak (W2, #19)
+      - name: End-to-end sign-in (Keycloak, #19) and ingestion (worker, ClamAV, W4)
         run: |
           python3 -m pip install --quiet --user requests==2.34.2
           python3 -I tools/ci/e2e-auth.py

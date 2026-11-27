@@ -56,6 +56,16 @@ Set `ZIRRUS_SITE_ADDRESS` to a domain name for automatic HTTPS. For local develo
 - **Reconciliation:** the worker logs a report every 6 hours (`Reconciliation__Interval`, `Reconciliation__StaleAfter`). It never deletes anything.
 - **S3 tests:** these use SeaweedFS through Testcontainers. Without Docker, set `ZIRRUS_TEST_S3` to an S3-compatible endpoint.
 
+## Ingestion (W4)
+- **Upload:** `POST /api/v1/catalogs/{catalogId}/assets` accepts multipart/form-data with one part named `file`, from editors only, with the CSRF token in `X-CSRF-TOKEN`.
+  - JPEG, PNG and WebP are detected from magic bytes; the limit is 100 MiB.
+  - The original is streamed into quarantine, and the response lists catalog duplicates by SHA-256.
+- **Pipeline:** the worker claims jobs from the PostgreSQL queue (`Ingestion__Concurrency`, `Ingestion__Lease`).
+  - **Stages:** `scan` (ClamAV over clamd TCP, fail-closed; `Scanner__Host`, `Scanner__Port`), then `process` (SkiaSharp: a 320 px WebP thumbnail and a 1600 px JPEG preview, EXIF orientation applied, at most 50 megapixels), then active.
+  - **Failures:** transient failures retry three times with backoff, then the job is dead-lettered. Editors call `POST …/assets/{assetId}/retry`.
+- **Downloads:** `GET …/assets/{assetId}/content` supports one byte range per request, and `GET …/renditions/{thumbnail|preview}` serves the renditions. Both answer for active assets only, with `Cache-Control: private, no-store`.
+- **ClamAV:** the `clamav` service needs outbound access for signature updates. Until it is healthy, scans retry.
+
 ## Adding a database migration
 ```bash
 dotnet tool restore

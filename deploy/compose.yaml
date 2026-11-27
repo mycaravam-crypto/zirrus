@@ -69,13 +69,33 @@ services:
     secrets:
       - source: zirrus_db
         target: ConnectionStrings__Zirrus
+    environment:
+      Scanner__Host: clamav
     volumes:
       - blobs:/var/lib/zirrus/blobs
-    networks: [data]
+    # Not waiting for ClamAV: while it loads signatures, scans fail closed and retry (ingestion-api-ui.md).
+    networks: [data, scanner]
     depends_on:
       migrate: { condition: service_completed_successfully }
     mem_limit: 512m
     cpus: 2
+
+  # Malware scanner (GPL-2.0, separate service reached over clamd's TCP protocol; nothing is linked).
+  # It needs outbound access for signature updates (freshclam) and is reachable only from the worker.
+  clamav:
+    image: clamav/clamav:1.5.4
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - clamav_db:/var/lib/clamav
+    networks: [scanner, egress]
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+    mem_limit: 2g
+    restart: unless-stopped
 
   web:
     build: { context: .., dockerfile: deploy/docker/web.Dockerfile }
@@ -101,11 +121,14 @@ networks:
   frontend: {}
   backend: { internal: true }
   data: { internal: true }
+  scanner: { internal: true }
+  egress: {}
 
 volumes:
   pgdata: {}
   # Originals and renditions (managed filesystem store, ADR 0006); back up together with pgdata.
   blobs: {}
+  clamav_db: {}
   caddy_data: {}
   caddy_config: {}
 

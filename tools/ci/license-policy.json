@@ -1,12 +1,293 @@
 {
   "$comment": "License gate for ADR 0003. 'runtime' covers code shipped in images; 'development' covers build and test tools that are never distributed (test-tool exception rule). Add exceptions only with a reason and reviewer.",
   "runtime": {
-    "allowed": ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "0BSD", "PostgreSQL", "Zlib"]
+    "allowed": [
+      "MIT",
+      "Apache-2.0",
+      "BSD-2-Clause",
+      "BSD-3-Clause",
+      "ISC",
+      "0BSD",
+      "PostgreSQL",
+      "Zlib"
+    ]
   },
   "development": {
-    "allowed": ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "0BSD", "PostgreSQL", "Zlib",
-                "CC0-1.0", "BlueOak-1.0.0", "Python-2.0", "CC-BY-4.0", "MPL-2.0"]
+    "allowed": [
+      "MIT",
+      "Apache-2.0",
+      "BSD-2-Clause",
+      "BSD-3-Clause",
+      "ISC",
+      "0BSD",
+      "PostgreSQL",
+      "Zlib",
+      "CC0-1.0",
+      "BlueOak-1.0.0",
+      "Python-2.0",
+      "CC-BY-4.0",
+      "MPL-2.0"
+    ]
   },
   "exceptions": [],
-  "nativePackages": []
+  "nativePackages": [
+    {
+      "package": "SkiaSharp.NativeAssets.Linux.NoDependencies",
+      "bundled": [
+        {
+          "library": "Skia",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "library": "ANGLE",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "library": "HarfBuzz",
+          "license": "MIT"
+        },
+        {
+          "library": "etc1",
+          "license": "Apache-2.0"
+        },
+        {
+          "library": "GIF decoder (Mozilla-derived)",
+          "license": "MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later",
+          "elected": "MPL-1.1"
+        },
+        {
+          "library": "libpng",
+          "license": "libpng-2.0"
+        },
+        {
+          "library": "Adobe DNG SDK",
+          "license": "Adobe DNG SDK license (permissive, attribution)"
+        },
+        {
+          "library": "expat",
+          "license": "MIT"
+        },
+        {
+          "library": "FreeType",
+          "license": "FTL OR GPL-2.0-or-later",
+          "elected": "FTL (attribution in documentation)"
+        },
+        {
+          "library": "ICU",
+          "license": "Unicode-3.0"
+        },
+        {
+          "library": "imgui",
+          "license": "MIT"
+        },
+        {
+          "library": "jsoncpp",
+          "license": "MIT"
+        },
+        {
+          "library": "libjpeg-turbo",
+          "license": "IJG AND BSD-3-Clause AND Zlib"
+        },
+        {
+          "library": "libwebp",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "library": "piex",
+          "license": "Apache-2.0"
+        },
+        {
+          "library": "SDL",
+          "license": "Zlib"
+        },
+        {
+          "library": "sfntly",
+          "license": "Apache-2.0"
+        },
+        {
+          "library": "SPIR-V Headers/Tools",
+          "license": "MIT AND Apache-2.0"
+        },
+        {
+          "library": "zlib (mozzconf.h under MPL-1.1/GPL-2.0/LGPL-2.1)",
+          "license": "Zlib",
+          "elected": "MPL-1.1 for mozzconf.h"
+        }
+      ],
+      "review": "Inventory from the package's THIRD-PARTY-NOTICES.txt (4.157.0), prepared during W4 (#24); spike §2 found the same set. All components are permissive except two tri-licensed files where MPL-1.1 is elected (GIF decoder, mozzconf.h): binary redistribution keeps the notices and points to the upstream Skia source. Classification of the MPL-1.1 election needs a named reviewer under ADR 0003 before the MVP release.",
+      "reviewer": "pending (ADR 0003)"
+    },
+    {
+      "package": "SkiaSharp.NativeAssets.Win32",
+      "bundled": [
+        {
+          "library": "Skia",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "library": "ANGLE",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "library": "HarfBuzz",
+          "license": "MIT"
+        },
+        {
+          "library": "etc1",
+          "license": "Apache-2.0"
+        },
+        {
+          "library": "GIF decoder (Mozilla-derived)",
+          "license": "MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later",
+          "elected": "MPL-1.1"
+        },
+        {
+          "library": "libpng",
+          "license": "libpng-2.0"
+        },
+        {
+          "library": "Adobe DNG SDK",
+          "license": "Adobe DNG SDK license (permissive, attribution)"
+        },
+        {
+          "library": "expat",
+          "license": "MIT"
+        },
+        {
+          "library": "FreeType",
+          "license": "FTL OR GPL-2.0-or-later",
+          "elected": "FTL (attribution in documentation)"
+        },
+        {
+          "library": "ICU",
+          "license": "Unicode-3.0"
+        },
+        {
+          "library": "imgui",
+          "license": "MIT"
+        },
+        {
+          "library": "jsoncpp",
+          "license": "MIT"
+        },
+        {
+          "library": "libjpeg-turbo",
+          "license": "IJG AND BSD-3-Clause AND Zlib"
+        },
+        {
+          "library": "libwebp",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "library": "piex",
+          "license": "Apache-2.0"
+        },
+        {
+          "library": "SDL",
+          "license": "Zlib"
+        },
+        {
+          "library": "sfntly",
+          "license": "Apache-2.0"
+        },
+        {
+          "library": "SPIR-V Headers/Tools",
+          "license": "MIT AND Apache-2.0"
+        },
+        {
+          "library": "zlib (mozzconf.h under MPL-1.1/GPL-2.0/LGPL-2.1)",
+          "license": "Zlib",
+          "elected": "MPL-1.1 for mozzconf.h"
+        }
+      ],
+      "review": "Inventory from the package's THIRD-PARTY-NOTICES.txt (4.157.0), prepared during W4 (#24); spike §2 found the same set. All components are permissive except two tri-licensed files where MPL-1.1 is elected (GIF decoder, mozzconf.h): binary redistribution keeps the notices and points to the upstream Skia source. Classification of the MPL-1.1 election needs a named reviewer under ADR 0003 before the MVP release.",
+      "reviewer": "pending (ADR 0003)"
+    },
+    {
+      "package": "SkiaSharp.NativeAssets.macOS",
+      "bundled": [
+        {
+          "library": "Skia",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "library": "ANGLE",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "library": "HarfBuzz",
+          "license": "MIT"
+        },
+        {
+          "library": "etc1",
+          "license": "Apache-2.0"
+        },
+        {
+          "library": "GIF decoder (Mozilla-derived)",
+          "license": "MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later",
+          "elected": "MPL-1.1"
+        },
+        {
+          "library": "libpng",
+          "license": "libpng-2.0"
+        },
+        {
+          "library": "Adobe DNG SDK",
+          "license": "Adobe DNG SDK license (permissive, attribution)"
+        },
+        {
+          "library": "expat",
+          "license": "MIT"
+        },
+        {
+          "library": "FreeType",
+          "license": "FTL OR GPL-2.0-or-later",
+          "elected": "FTL (attribution in documentation)"
+        },
+        {
+          "library": "ICU",
+          "license": "Unicode-3.0"
+        },
+        {
+          "library": "imgui",
+          "license": "MIT"
+        },
+        {
+          "library": "jsoncpp",
+          "license": "MIT"
+        },
+        {
+          "library": "libjpeg-turbo",
+          "license": "IJG AND BSD-3-Clause AND Zlib"
+        },
+        {
+          "library": "libwebp",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "library": "piex",
+          "license": "Apache-2.0"
+        },
+        {
+          "library": "SDL",
+          "license": "Zlib"
+        },
+        {
+          "library": "sfntly",
+          "license": "Apache-2.0"
+        },
+        {
+          "library": "SPIR-V Headers/Tools",
+          "license": "MIT AND Apache-2.0"
+        },
+        {
+          "library": "zlib (mozzconf.h under MPL-1.1/GPL-2.0/LGPL-2.1)",
+          "license": "Zlib",
+          "elected": "MPL-1.1 for mozzconf.h"
+        }
+      ],
+      "review": "Inventory from the package's THIRD-PARTY-NOTICES.txt (4.157.0), prepared during W4 (#24); spike §2 found the same set. All components are permissive except two tri-licensed files where MPL-1.1 is elected (GIF decoder, mozzconf.h): binary redistribution keeps the notices and points to the upstream Skia source. Classification of the MPL-1.1 election needs a named reviewer under ADR 0003 before the MVP release.",
+      "reviewer": "pending (ADR 0003)"
+    }
+  ]
 }

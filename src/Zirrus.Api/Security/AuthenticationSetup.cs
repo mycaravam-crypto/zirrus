@@ -146,6 +146,13 @@ public static class AuthenticationSetup
             return await next(context);
         }
 
+        // Uploads must carry the token in the header: looking for a form field would buffer the whole file.
+        var request = context.HttpContext.Request;
+        if (request.ContentType?.StartsWith("multipart/", StringComparison.OrdinalIgnoreCase) == true && !request.Headers.ContainsKey(CsrfHeader))
+        {
+            return TypedResults.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Missing or invalid CSRF token");
+        }
+
         var antiforgery = context.HttpContext.RequestServices.GetRequiredService<IAntiforgery>();
         try
         {

@@ -20,6 +20,12 @@ public enum OperationStatus
 
     /// <summary>The caller's revision is stale (412, from If-Match).</summary>
     PreconditionFailed,
+
+    /// <summary>The upload exceeds the size limit (413).</summary>
+    TooLarge,
+
+    /// <summary>The file is not a supported format (415).</summary>
+    UnsupportedMediaType,
 }
 
 /// <summary>Result of a use case: a status, an optional value and an optional error message.</summary>

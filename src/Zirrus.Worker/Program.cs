@@ -11,7 +11,9 @@ if (await HostingExtensions.RunHealthProbeIfRequestedAsync(args) is { } probeExi
 var builder = WebApplication.CreateSlimBuilder(args);
 builder.Configuration.AddZirrusSecrets();
 builder.Services.AddZirrusInfrastructure(builder.Configuration);
-builder.Services.AddHostedService<HeartbeatService>();
+builder.Services.AddZirrusIngestion(builder.Configuration);
+builder.Services.Configure<IngestionSettings>(builder.Configuration.GetSection("Ingestion"));
+builder.Services.AddHostedService<IngestionWorker>();
 builder.Services.Configure<ReconciliationSettings>(builder.Configuration.GetSection("Reconciliation"));
 builder.Services.AddHostedService<ReconciliationService>();
 
