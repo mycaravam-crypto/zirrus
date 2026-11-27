@@ -221,14 +221,15 @@ public sealed class AuditDigestTests(PostgresFixture fixture) : IClassFixture<Po
 
         try
         {
-            await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-30));
+            var eventId = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-30));
             await Assert.ThrowsAsync<IOException>(() => digests.SealAsync(Api.Ct));
 
             options.ExportDirectory = Path.Combine(root, "exports");
             Assert.Null(await digests.SealAsync(Api.Ct));
 
             await using var db = fixture.CreateContext();
-            var saved = await db.Set<AuditDigest>().SingleAsync(Api.Ct);
+            var sequence = await db.Set<AuditEvent>().Where(e => e.Id == eventId).Select(e => e.Seq).SingleAsync(Api.Ct);
+            var saved = await db.Set<AuditDigest>().SingleAsync(d => d.FromSeq <= sequence && d.ToSeq >= sequence, Api.Ct);
             var exportPath = Path.Combine(options.ExportDirectory, $"audit-digest-{saved.ToSeq:D12}.json");
             Assert.True(File.Exists(exportPath));
             Assert.Contains(saved.Sha256, await File.ReadAllTextAsync(exportPath, Api.Ct));
