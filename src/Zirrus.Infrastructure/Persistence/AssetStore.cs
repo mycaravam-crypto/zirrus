@@ -15,6 +15,12 @@ internal sealed class AssetStore(ZirrusDbContext db) : IAssetStore
         db.Assets.SingleOrDefaultAsync(a => a.CatalogId == catalogId && a.Id == assetId, cancellationToken);
 
     /// <inheritdoc />
+    public Task<MetadataSchema?> FindMetadataSchemaAsync(Guid organizationId, Guid catalogId, CancellationToken cancellationToken) =>
+        db.Set<MetadataSchema>().AsNoTracking().Include(s => s.Fields)
+            .Where(s => s.OrganizationId == organizationId && s.CatalogId == catalogId)
+            .OrderByDescending(s => s.Version).FirstOrDefaultAsync(cancellationToken);
+
+    /// <inheritdoc />
     public Task<Rendition?> FindRenditionAsync(Guid assetId, string kind, CancellationToken cancellationToken) =>
         db.Renditions.AsNoTracking().SingleOrDefaultAsync(r => r.AssetId == assetId && r.Kind == kind, cancellationToken);
 
