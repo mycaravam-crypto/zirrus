@@ -57,12 +57,12 @@ test("editor journey: upload, processing, detail, metadata, download, logout", a
   await card.click();
   const pane = page.getByRole("complementary", { name: "gradient-640x480.jpg" });
   await expect(pane.getByRole("img", { name: "Preview of gradient-640x480.jpg" })).toBeVisible();
-  await expect(pane.getByText("Active")).toBeVisible();
+  await expect(pane.getByText("Active", { exact: true })).toBeVisible();
   await expect(pane.getByRole("heading", { name: "gradient-640x480.jpg" })).toBeFocused();
 
   await pane.getByRole("button", { name: "Add field" }).click();
-  await pane.getByLabel("Field").fill("title");
-  await pane.getByLabel("Value").fill("Harbour at dusk");
+  await pane.getByRole("textbox", { name: "Field", exact: true }).fill("title");
+  await pane.getByRole("textbox", { name: "Value", exact: true }).fill("Harbour at dusk");
   await pane.getByRole("button", { name: "Save metadata" }).click();
   await expect(pane.getByText("Metadata saved.")).toBeVisible();
   await expectAccessible(page, "asset detail with metadata form");
