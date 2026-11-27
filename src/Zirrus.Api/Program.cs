@@ -26,6 +26,7 @@ app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseAuthentication();
+app.UseMiddleware<DeniedRequestAuditMiddleware>();
 app.UseAuthorization();
 
 app.MapOpenApi("/openapi/{documentName}.json").AllowAnonymous();

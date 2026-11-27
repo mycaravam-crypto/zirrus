@@ -33,6 +33,9 @@ public static class AuditActions
     /// <summary>A user signed out.</summary>
     public const string SignOut = "session.sign_out";
 
+    /// <summary>An authenticated request was denied access to an API resource.</summary>
+    public const string AccessDenied = "access.denied";
+
     /// <summary>A file was uploaded into quarantine.</summary>
     public const string Upload = "asset.upload";
 
