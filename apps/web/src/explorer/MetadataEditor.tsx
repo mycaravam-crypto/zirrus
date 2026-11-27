@@ -1,3 +1,5 @@
+import { ActionIcon, Alert, Badge, Button, Code, Group, Stack, Text, TextInput, Title } from "@mantine/core";
+import { IconAlertCircle, IconAlertTriangle, IconCircleCheck, IconDeviceFloppy, IconEye, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AssetDetails, ZirrusClient } from "@zirrus/api-client";
 import { useId, useState } from "react";
@@ -104,20 +106,40 @@ function Form({
     onError: (error) => setConflict(error instanceof ApiError && error.status === 412),
   });
 
+  const heading = (
+    <Group justify="space-between" align="center">
+      <Title order={3} size="h5" id={`${formId}-heading`}>
+        {t("metadata.heading")}
+      </Title>
+      <Badge variant="default" size="sm" radius="sm">
+        {t("metadata.revision", { revision: String(asset.revision) })}
+      </Badge>
+    </Group>
+  );
+
   if (!canEdit) {
+    const entries = Object.entries(metadata);
     return (
-      <section aria-labelledby={`${formId}-heading`}>
-        <h3 id={`${formId}-heading`}>{t("metadata.heading")}</h3>
-        <p>{t("metadata.readOnly")}</p>
-        <dl className="metadata">
-          {Object.entries(metadata).map(([key, value]) => (
-            <div key={key}>
-              <dt>{key}</dt>
-              <dd>{typeof value === "string" ? value : JSON.stringify(value)}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
+      <Stack component="section" aria-labelledby={`${formId}-heading`} gap="sm">
+        {heading}
+        <Alert variant="light" color="gray" icon={<IconEye />} p="xs">
+          <Text size="sm">{t("metadata.readOnly")}</Text>
+        </Alert>
+        {entries.length === 0 ? (
+          <Text size="sm" c="dimmed">
+            {t("metadata.empty")}
+          </Text>
+        ) : (
+          <dl className="metadata-table">
+            {entries.map(([key, value]) => (
+              <div key={key} className="metadata-row">
+                <dt>{key}</dt>
+                <dd>{typeof value === "string" ? value : JSON.stringify(value)}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </Stack>
     );
   }
 
@@ -129,57 +151,120 @@ function Form({
         if (invalid === undefined && duplicate === undefined) save.mutate();
       }}
     >
-      <h3 id={`${formId}-heading`}>{t("metadata.heading")}</h3>
-      {rows.map((row) => (
-        <div className="field-row" key={row.id}>
-          <label>
-            {t("metadata.key")}
-            <input
+      <Stack gap="sm">
+        {heading}
+        {rows.length > 0 && (
+          <div className="field-grid" aria-hidden="true">
+            <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+              {t("metadata.key")}
+            </Text>
+            <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+              {t("metadata.value")}
+            </Text>
+            <span />
+          </div>
+        )}
+        {rows.length === 0 && structured.length === 0 && (
+          <Text size="sm" c="dimmed">
+            {t("metadata.empty")}
+          </Text>
+        )}
+        {rows.map((row) => (
+          <div className="field-grid" key={row.id}>
+            <TextInput
+              aria-label={t("metadata.key")}
               value={row.key}
-              aria-invalid={!keyPattern.test(row.key.trim())}
+              size="sm"
+              ff="monospace"
+              error={!keyPattern.test(row.key.trim())}
               onChange={(e) => setRows(rows.map((r) => (r.id === row.id ? { ...r, key: e.target.value } : r)))}
             />
-          </label>
-          <label>
-            {t("metadata.value")}
-            <input value={row.value} onChange={(e) => setRows(rows.map((r) => (r.id === row.id ? { ...r, value: e.target.value } : r)))} />
-          </label>
-          <button type="button" aria-label={t("metadata.remove", { key: row.key || "…" })} onClick={() => setRows(rows.filter((r) => r.id !== row.id))}>
-            {t("metadata.removeShort")}
-          </button>
-        </div>
-      ))}
-      {structured.map(([key, value]) => (
-        <p key={key} className="structured">
-          <strong>{key}</strong>: <code>{JSON.stringify(value)}</code> <span>({t("metadata.structured")})</span>
-        </p>
-      ))}
-      {invalid !== undefined && <p role="alert">{t("metadata.invalidKey")}</p>}
-      {duplicate !== undefined && <p role="alert">{t("metadata.duplicateKey", { key: duplicate })}</p>}
-      <div className="actions">
-        <button
-          type="button"
-          onClick={() => {
-            setRows([...rows, { id: nextId, key: "", value: "" }]);
-            setNextId(nextId + 1);
-          }}
-        >
-          {t("metadata.add")}
-        </button>
-        <button type="submit" disabled={save.isPending || invalid !== undefined || duplicate !== undefined}>
-          {t("metadata.save")}
-        </button>
-      </div>
-      {saved && <p role="status">{t("metadata.saved")}</p>}
-      {conflict && (
-        <div role="alert" className="conflict">
-          <p>{t("metadata.conflict")}</p>
-          <button type="button" onClick={() => void queryClient.invalidateQueries({ queryKey: assetKey(catalogId, asset.id) })}>
-            {t("metadata.reload")}
-          </button>
-        </div>
-      )}
-      {save.isError && !conflict && <p role="alert">{t("metadata.failed", { reason: save.error.message })}</p>}
+            <TextInput
+              aria-label={t("metadata.value")}
+              value={row.value}
+              size="sm"
+              onChange={(e) => setRows(rows.map((r) => (r.id === row.id ? { ...r, value: e.target.value } : r)))}
+            />
+            <ActionIcon
+              variant="subtle"
+              color="gray.7"
+              size="lg"
+              aria-label={t("metadata.remove", { key: row.key || "…" })}
+              onClick={() => setRows(rows.filter((r) => r.id !== row.id))}
+            >
+              <IconTrash size={16} />
+            </ActionIcon>
+          </div>
+        ))}
+        {structured.map(([key, value]) => (
+          <Group key={key} gap="xs" className="structured" wrap="wrap">
+            <Text size="sm" fw={600} ff="monospace">
+              {key}
+            </Text>
+            <Code>{JSON.stringify(value)}</Code>
+            <Text size="xs" c="dimmed" component="span">
+              ({t("metadata.structured")})
+            </Text>
+          </Group>
+        ))}
+        {invalid !== undefined && (
+          <Alert color="red.9" variant="light" icon={<IconAlertCircle />} p="xs">
+            <Text size="sm">{t("metadata.invalidKey")}</Text>
+          </Alert>
+        )}
+        {duplicate !== undefined && (
+          <Alert color="red.9" variant="light" icon={<IconAlertCircle />} p="xs">
+            <Text size="sm">{t("metadata.duplicateKey", { key: duplicate })}</Text>
+          </Alert>
+        )}
+        <Group justify="space-between" mt={4}>
+          <Button
+            variant="default"
+            size="sm"
+            leftSection={<IconPlus size={16} />}
+            onClick={() => {
+              setRows([...rows, { id: nextId, key: "", value: "" }]);
+              setNextId(nextId + 1);
+            }}
+          >
+            {t("metadata.add")}
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            leftSection={<IconDeviceFloppy size={16} />}
+            loading={save.isPending}
+            disabled={invalid !== undefined || duplicate !== undefined}
+          >
+            {t("metadata.save")}
+          </Button>
+        </Group>
+        {saved && (
+          <Group gap={6} role="status" className="saved-note">
+            <IconCircleCheck size={16} aria-hidden="true" />
+            <Text size="sm">{t("metadata.saved")}</Text>
+          </Group>
+        )}
+        {conflict && (
+          <Alert color="orange.9" variant="light" icon={<IconAlertTriangle />} title={t("metadata.conflictTitle")}>
+            <Stack gap="xs" align="flex-start">
+              <Text size="sm">{t("metadata.conflict")}</Text>
+              <Button
+                size="xs"
+                variant="default"
+                onClick={() => void queryClient.invalidateQueries({ queryKey: assetKey(catalogId, asset.id) })}
+              >
+                {t("metadata.reload")}
+              </Button>
+            </Stack>
+          </Alert>
+        )}
+        {save.isError && !conflict && (
+          <Alert color="red.9" variant="light" icon={<IconAlertCircle />} p="xs">
+            <Text size="sm">{t("metadata.failed", { reason: save.error.message })}</Text>
+          </Alert>
+        )}
+      </Stack>
     </form>
   );
 }
