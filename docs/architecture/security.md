@@ -44,7 +44,8 @@ All ungranted catalogs are denied except for the organization administrator. Tes
   - the owner cannot change audit records;
   - `zirrus_app` cannot update, delete, truncate or purge;
   - a tampered sealed record is detected;
-  - missing internal events, reordered events and truncated digest ranges are detected;\n  - a fully expired digest range is purged as a unit, while a range containing any unexpired event remains intact and verifiable;
+  - missing internal events, reordered events and truncated digest ranges are detected;
+  - a fully expired digest range is purged as a unit, while a range containing any unexpired event remains intact and verifiable;
   - authenticated 403 and resource-hiding 404 responses are audited without request payloads.
 - **Content:** no secrets, raw tokens or unnecessary personal data. Protect logs and define incident access.
 - **Retention:** proposed 180 days for audit and 30 days for soft-deleted originals. Confirm policy and legal basis; document deletion requests and backup expiry.
