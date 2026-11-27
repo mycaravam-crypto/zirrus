@@ -247,6 +247,29 @@ public sealed class AuthorizationMatrixTests : IClassFixture<PostgresFixture>, I
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Metadata_schema_creation_is_admin_only_and_reads_are_catalog_scoped()
+    {
+        using var admin = _fixture.Api.ClientAs(Admin);
+        using var editor = _fixture.Api.ClientAs(Editor);
+        using var viewer = _fixture.Api.ClientAs(Viewer);
+        using var outsider = _fixture.Api.ClientAs(Outsider);
+        var path = $"/api/v1/catalogs/{_press.Id}/metadata-schema";
+        var fields = new[] { new Zirrus.Domain.Assets.MetadataFieldDefinition("title", "Title", Zirrus.Domain.Assets.MetadataFieldType.Text, Required: true) };
+
+        using var denied = await Api.SendAsync(editor, HttpMethod.Post, path, fields);
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        using var created = await Api.SendAsync(admin, HttpMethod.Post, path, fields);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var schema = await viewer.GetFromJsonAsync<SchemaDetails>(new Uri(path, UriKind.Relative), Api.Ct);
+        Assert.Equal(1, schema!.Version);
+        Assert.True(Assert.Single(schema.Fields).Required);
+        using var hidden = await outsider.GetAsync(new Uri(path, UriKind.Relative), Api.Ct);
+        Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
+        using var duplicate = await Api.SendAsync(admin, HttpMethod.Post, path, fields);
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+    }
+
     private sealed record MeResponse(string Subject, string Name, bool IsOrganizationAdmin);
 }
 
