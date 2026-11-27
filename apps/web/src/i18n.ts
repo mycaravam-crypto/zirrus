@@ -62,6 +62,21 @@ const en = {
   "metadata.reload": "Load the latest version",
   "metadata.failed": "Metadata was not saved: {reason}",
   "metadata.structured": "Structured value (edited in a later version)",
+  "app.toggleNav": "Show or hide catalogs",
+  "app.toggleTheme": "Switch between light and dark mode",
+  "app.unreachableHint": "Check your connection and reload the page.",
+  "app.welcome": "Welcome to ZIRRUS",
+  "app.tagline": "Store, find and share your organization's images in one place.",
+  "assets.subtitleEditor": "Upload images, follow their processing and edit their metadata.",
+  "assets.subtitleViewer": "Browse and download images in this catalog.",
+  "upload.drop": "Drag images here or click to choose files",
+  "upload.hint": "JPEG, PNG or WebP, up to 100 MiB each. Files are scanned before they appear.",
+  "upload.rejected": "only JPEG, PNG or WebP files up to 100 MiB are accepted",
+  "detail.copy": "Copy SHA-256",
+  "detail.copied": "Copied",
+  "metadata.revision": "Revision {revision}",
+  "metadata.empty": "No metadata yet.",
+  "metadata.conflictTitle": "Changed by someone else",
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -128,6 +143,21 @@ const de: Record<MessageKey, string> = {
   "metadata.reload": "Neueste Fassung laden",
   "metadata.failed": "Metadaten wurden nicht gespeichert: {reason}",
   "metadata.structured": "Strukturierter Wert (in einer späteren Version bearbeitbar)",
+  "app.toggleNav": "Kataloge ein- oder ausblenden",
+  "app.toggleTheme": "Zwischen hellem und dunklem Modus wechseln",
+  "app.unreachableHint": "Prüfen Sie Ihre Verbindung und laden Sie die Seite neu.",
+  "app.welcome": "Willkommen bei ZIRRUS",
+  "app.tagline": "Bilder Ihrer Organisation an einem Ort speichern, finden und teilen.",
+  "assets.subtitleEditor": "Bilder hochladen, ihre Verarbeitung verfolgen und Metadaten bearbeiten.",
+  "assets.subtitleViewer": "Bilder in diesem Katalog ansehen und herunterladen.",
+  "upload.drop": "Bilder hierher ziehen oder klicken, um Dateien zu wählen",
+  "upload.hint": "JPEG, PNG oder WebP, je bis 100 MiB. Dateien werden vor der Anzeige geprüft.",
+  "upload.rejected": "nur JPEG-, PNG- oder WebP-Dateien bis 100 MiB sind erlaubt",
+  "detail.copy": "SHA-256 kopieren",
+  "detail.copied": "Kopiert",
+  "metadata.revision": "Revision {revision}",
+  "metadata.empty": "Noch keine Metadaten.",
+  "metadata.conflictTitle": "Von jemand anderem geändert",
 };
 
 const dictionaries = { en, de } as const;

@@ -1,8 +1,53 @@
+import {
+  Alert,
+  AspectRatio,
+  Badge,
+  Button,
+  Center,
+  Image,
+  Paper,
+  SimpleGrid,
+  Skeleton,
+  Stack,
+  Text,
+  ThemeIcon,
+  UnstyledButton,
+} from "@mantine/core";
+import {
+  IconAlertCircle,
+  IconAlertTriangle,
+  IconBan,
+  IconCloudUpload,
+  IconLoader2,
+  IconPhotoOff,
+  IconShieldSearch,
+} from "@tabler/icons-react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import type { AssetSummary, ZirrusClient } from "@zirrus/api-client";
+import type { ReactNode } from "react";
 import { ApiError, assetPath, pendingStates } from "../api";
 import { t, type MessageKey } from "../i18n";
 import { assetsKey } from "./keys";
+
+/** Badge color per lifecycle state; shades chosen for AA contrast on filled badges. */
+export const stateColor: Record<string, string> = {
+  uploading: "cyan.9",
+  quarantined: "yellow.5",
+  processing: "blue.8",
+  active: "teal.9",
+  rejected: "gray.8",
+  failed: "red.9",
+};
+
+const stateIcon: Record<string, ReactNode> = {
+  uploading: <IconCloudUpload size={30} stroke={1.5} />,
+  quarantined: <IconShieldSearch size={30} stroke={1.5} />,
+  processing: <IconLoader2 size={30} stroke={1.5} className="spin" />,
+  rejected: <IconBan size={30} stroke={1.5} />,
+  failed: <IconAlertTriangle size={30} stroke={1.5} />,
+};
+
+const gridCols = { base: 2, "540px": 3, "760px": 4, "1000px": 5 };
 
 /**
  * Thumbnail grid, newest first, with cursor pagination. Polls every 3 s while any visible asset is
@@ -27,61 +72,159 @@ export function AssetGrid({
     queryKey: assetsKey(catalogId),
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam }) => {
-      const { data, response } = await client.GET("/api/v1/catalogs/{catalogId}/assets", {
-        params: { path: { catalogId }, query: { cursor: pageParam } },
-      });
-      if (data === undefined) throw new ApiError(response.status, "Could not load assets");
+      const { data, response } = await client.GET(
+        "/api/v1/catalogs/{catalogId}/assets",
+        {
+          params: { path: { catalogId }, query: { cursor: pageParam } },
+        },
+      );
+      if (data === undefined)
+        throw new ApiError(response.status, "Could not load assets");
       return data;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     refetchInterval: (query) =>
-      query.state.data?.pages.some((p) => p.items.some((a) => pendingStates.has(a.state))) ? 3000 : false,
+      query.state.data?.pages.some((p) =>
+        p.items.some((a) => pendingStates.has(a.state)),
+      )
+        ? 3000
+        : false,
   });
 
-  if (assets.isPending) return <p role="status">{t("app.loading")}</p>;
-  if (assets.isError) return <p role="alert">{t("assets.failed")}</p>;
+  if (assets.isPending) {
+    return (
+      <>
+        <Text role="status" className="sr-only">
+          {t("app.loading")}
+        </Text>
+        <div className="asset-grid-container">
+          <SimpleGrid
+            type="container"
+            cols={gridCols}
+            spacing="md"
+            aria-hidden="true"
+          >
+            {Array.from({ length: 8 }, (_, i) => (
+              <Skeleton key={i} radius="md" className="card-skeleton" />
+            ))}
+          </SimpleGrid>
+        </div>
+      </>
+    );
+  }
+  if (assets.isError) {
+    return (
+      <Alert color="red.9" variant="light" icon={<IconAlertCircle />}>
+        {t("assets.failed")}
+      </Alert>
+    );
+  }
   const items = assets.data.pages.flatMap((p) => p.items);
-  if (items.length === 0) return <p>{t("assets.empty")}</p>;
+  if (items.length === 0) {
+    return (
+      <Paper p="xl" radius="lg" className="empty-state">
+        <Stack align="center" gap="xs">
+          <ThemeIcon
+            size={52}
+            radius="xl"
+            variant="light"
+            color="gray"
+            aria-hidden="true"
+          >
+            <IconPhotoOff size={28} stroke={1.5} />
+          </ThemeIcon>
+          <Text fw={600}>{t("assets.empty")}</Text>
+        </Stack>
+      </Paper>
+    );
+  }
 
   return (
-    <>
-      <ul className="grid">
-        {items.map((asset) => (
-          <li key={asset.id}>
-            <button
-              type="button"
-              className="card"
-              aria-pressed={asset.id === selected}
-              onClick={() => onSelect(asset.id)}
-            >
-              <Thumbnail catalogId={catalogId} asset={asset} />
-              {/* The accessible name contains the visible text (WCAG 2.5.3): "Open <name> [state]". */}
-              <span className="name">
-                <span className="sr-only">{t("assets.openPrefix")}</span>{" "}
-                {asset.fileName}
-              </span>
-              {asset.state !== "active" && <span className={`badge state-${asset.state}`}>{stateLabel(asset.state)}</span>}
-            </button>
-          </li>
-        ))}
-      </ul>
+    <Stack gap="lg" align="center">
+      <div className="asset-grid-container">
+        <SimpleGrid
+          type="container"
+          component="ul"
+          cols={gridCols}
+          spacing="md"
+          className="plain-list asset-grid"
+        >
+          {items.map((asset) => (
+            <li key={asset.id}>
+              <UnstyledButton
+                className="asset-card"
+                aria-pressed={asset.id === selected}
+                onClick={() => onSelect(asset.id)}
+              >
+                <Thumbnail catalogId={catalogId} asset={asset} />
+                <span className="asset-card-body">
+                  {/* The accessible name contains the visible text (WCAG 2.5.3): "Open <name> [state]". */}
+                  <span className="asset-card-name">
+                    <span className="sr-only">{t("assets.openPrefix")}</span>{" "}
+                    {asset.fileName}
+                  </span>
+                  {asset.state !== "active" && (
+                    <Badge
+                      size="sm"
+                      variant="filled"
+                      color={stateColor[asset.state] ?? "gray.8"}
+                      className="asset-card-badge"
+                    >
+                      {stateLabel(asset.state)}
+                    </Badge>
+                  )}
+                </span>
+              </UnstyledButton>
+            </li>
+          ))}
+        </SimpleGrid>
+      </div>
       {assets.hasNextPage && (
-        <button type="button" onClick={() => void assets.fetchNextPage()} disabled={assets.isFetchingNextPage}>
+        <Button
+          variant="default"
+          onClick={() => void assets.fetchNextPage()}
+          loading={assets.isFetchingNextPage}
+        >
           {t("assets.more")}
-        </button>
+        </Button>
       )}
-    </>
+    </Stack>
   );
 }
 
 /**
- * Thumbnail of an active asset, or a placeholder while it is processed.
+ * Thumbnail of an active asset, or a state icon while it is processed.
  * @param catalogId Catalog of the asset.
  * @param asset Asset to show.
  */
-function Thumbnail({ catalogId, asset }: { catalogId: string; asset: AssetSummary }) {
-  if (asset.state !== "active") return <span className="thumb placeholder" aria-hidden="true" />;
-  return <img className="thumb" src={`${assetPath(catalogId, asset.id)}/renditions/thumbnail`} alt="" loading="lazy" width={160} height={160} />;
+function Thumbnail({
+  catalogId,
+  asset,
+}: {
+  catalogId: string;
+  asset: AssetSummary;
+}) {
+  return (
+    <AspectRatio ratio={1} className="asset-card-thumb">
+      {asset.state === "active" ? (
+        <Image
+          src={`${assetPath(catalogId, asset.id)}/renditions/thumbnail`}
+          alt=""
+          loading="lazy"
+          width={160}
+          height={160}
+          fit="cover"
+        />
+      ) : (
+        <Center
+          className={`thumb-placeholder state-${asset.state}`}
+          aria-hidden="true"
+        >
+          {stateIcon[asset.state] ?? <IconPhotoOff size={30} stroke={1.5} />}
+        </Center>
+      )}
+    </AspectRatio>
+  );
 }
 
 /**
