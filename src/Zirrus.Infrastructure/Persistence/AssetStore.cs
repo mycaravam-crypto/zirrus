@@ -26,9 +26,16 @@ internal sealed class AssetStore(ZirrusDbContext db) : IAssetStore
         if (filter?.Text is { Length: > 0 } text)
         {
             // Fixed configurations and parameterized query text; no user-controlled SQL identifiers.
-            query = query.Where(a => EF.Functions.ToTsVector("english", a.FileName + " " + a.Metadata).Matches(EF.Functions.PlainToTsQuery("english", text))
-                || EF.Functions.ToTsVector("german", a.FileName + " " + a.Metadata).Matches(EF.Functions.PlainToTsQuery("german", text))
-                || EF.Functions.ToTsVector("simple", a.FileName + " " + a.Metadata).Matches(EF.Functions.PlainToTsQuery("simple", text)));
+            var matchingIds = db.Database.SqlQuery<Guid>($"""
+                SELECT id AS "Value" FROM assets
+                WHERE catalog_id = {catalogId} AND state = 'Active'
+                  AND (
+                    (to_tsvector('english', file_name) || jsonb_to_tsvector('english', metadata, '["string"]'::jsonb)) @@ plainto_tsquery('english', {text})
+                    OR (to_tsvector('german', file_name) || jsonb_to_tsvector('german', metadata, '["string"]'::jsonb)) @@ plainto_tsquery('german', {text})
+                    OR (to_tsvector('simple', file_name) || jsonb_to_tsvector('simple', metadata, '["string"]'::jsonb)) @@ plainto_tsquery('simple', {text})
+                  )
+                """);
+            query = query.Where(a => matchingIds.Contains(a.Id));
         }
 
         if (filter?.CategoryId is { } categoryId)
