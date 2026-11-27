@@ -15,6 +15,27 @@ internal sealed class AssetStore(ZirrusDbContext db) : IAssetStore
         db.Assets.SingleOrDefaultAsync(a => a.CatalogId == catalogId && a.Id == assetId, cancellationToken);
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken)
+    {
+        var query = db.Assets.AsNoTracking().Where(a => a.CatalogId == catalogId && a.State != AssetState.Deleting && a.State != AssetState.Deleted);
+        if (activeOnly)
+        {
+            query = query.Where(a => a.State == AssetState.Active);
+        }
+
+        if (after is { } position)
+        {
+            // Keyset pagination on (created_at, id), newest first; stable while new uploads arrive.
+            query = query.Where(a => a.CreatedAt < position.CreatedAt || (a.CreatedAt == position.CreatedAt && a.Id.CompareTo(position.Id) < 0));
+        }
+
+        var rows = await query.OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.Id).Take(limit)
+            .Select(a => new { a.Id, a.FileName, a.MediaType, a.SizeBytes, a.State, a.StatusReason, a.CreatedAt, a.UpdatedAt })
+            .ToListAsync(cancellationToken);
+        return rows.Select(a => new AssetSummary(a.Id, a.FileName, a.MediaType, a.SizeBytes, a.State.ToString().ToLowerInvariant(), a.StatusReason, a.CreatedAt, a.UpdatedAt)).ToList();
+    }
+
+    /// <inheritdoc />
     public Task<MetadataSchema?> FindMetadataSchemaAsync(Guid organizationId, Guid catalogId, CancellationToken cancellationToken) =>
         db.Set<MetadataSchema>().AsNoTracking().Include(s => s.Fields)
             .Where(s => s.OrganizationId == organizationId && s.CatalogId == catalogId)

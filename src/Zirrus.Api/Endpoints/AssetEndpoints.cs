@@ -21,6 +21,19 @@ internal static class AssetEndpoints
     {
         var assets = api.MapGroup("/catalogs/{catalogId:guid}/assets").WithTags("Assets");
 
+        // Lists the catalog's assets the caller may see, newest first, with cursor pagination.
+        assets.MapGet("/", async (Guid catalogId, string? cursor, int? limit, AssetUseCases useCases, CancellationToken cancellationToken) =>
+            {
+                var result = await useCases.ListAsync(catalogId, cursor, limit, cancellationToken);
+                return result.Status == OperationStatus.Ok ? Results.Ok(result.Value) : Problem(result.Status, result.Error);
+            })
+            .WithName("ListAssets")
+            .WithSummary("List a catalog's assets, newest first (viewers see active assets only)")
+            .WithDescription("Cursor pagination: pass nextCursor from the previous page; limit 1–200, default 50. Search and filters follow in W5.")
+            .Produces<AssetPage>()
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         // Streams one multipart file into quarantine; scanning and rendering run in the worker.
         assets.MapPost("/", UploadAsync)
             .WithName("UploadAsset")

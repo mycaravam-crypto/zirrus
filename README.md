@@ -69,6 +69,13 @@ Set `ZIRRUS_SITE_ADDRESS` to a domain name for automatic HTTPS. For local develo
 - **Load tests:** `tools/ci/ingestion-load.py faults` kills the worker during processing (CI); `soak` checks Q2 throughput (nightly `ingestion-soak` workflow).
 - **Tests without Docker:** set `ZIRRUS_TEST_CLAMAV=host:port` to point the real-clamd tests at an existing daemon.
 
+## Asset explorer (W6)
+- **Explorer:** the SPA shows the catalogs you hold a role in, a thumbnail grid (newest first, cursor pages of 50 from `GET /api/v1/catalogs/{catalogId}/assets`) and a detail pane with preview, file facts and download.
+- **Editors:** upload with progress, retry failed or stalled assets, and edit metadata. Saves send `If-Match`; a 412 shows a conflict and offers to reload. Viewers get read-only views, and the API enforces the same.
+- **Status:** the grid and detail poll every 3 s while assets are scanned or processed. A 401 returns to the sign-in link and drops cached data.
+- **Language:** strings live in `apps/web/src/i18n.ts`, in English and German, chosen by the browser language.
+- **End-to-end tests:** `pnpm --filter @zirrus/web e2e` runs Playwright and axe-core (zero critical or serious findings) against the running Compose stack; CI runs it in the compose job. Search, filters and the category tree follow W5 (#25).
+
 ## Adding a database migration
 ```bash
 dotnet tool restore

@@ -1,78 +1,65 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ZirrusClient } from "@zirrus/api-client";
+import { ApiError } from "./api";
+import { Explorer } from "./explorer/Explorer";
+import { t } from "./i18n";
 
-/** Signed-in shell: who am I, my catalogs, sign out. Anonymous visitors get a sign-in link. */
+/** Query key of the signed-in user; a 401 anywhere resets it to null (signed out). */
+export const meKey = ["me"] as const;
+
+/**
+ * Signed-in shell: header with the user and sign-out, then the explorer. Anonymous visitors get a sign-in link.
+ * @param client API client.
+ */
 export function App({ client }: { client: ZirrusClient }) {
   const me = useQuery({
-    queryKey: ["me"],
+    queryKey: meKey,
     queryFn: async () => {
       const { data, response } = await client.GET("/api/v1/me");
       if (response.status === 401) return null;
-      if (data === undefined) throw new Error("Could not load the current user");
+      if (data === undefined) throw new ApiError(response.status, "Could not load the current user");
       return data;
     },
   });
 
   return (
-    <main>
-      <h1>ZIRRUS</h1>
-      {me.isPending && <p role="status">Loading…</p>}
-      {me.isError && <p role="alert">Could not reach the server.</p>}
-      {me.isSuccess && me.data === null && (
-        <p>
-          <a href="/login?returnUrl=/">Sign in</a>
-        </p>
-      )}
-      {me.isSuccess && me.data !== null && (
-        <>
+    <>
+      <header className="top">
+        <h1>{t("app.title")}</h1>
+        {me.isSuccess && me.data !== null && (
+          <div className="user">
+            <span>
+              {t("app.signedInAs", { name: me.data.name || me.data.subject })}
+              {me.data.isOrganizationAdmin && ` (${t("app.orgAdmin")})`}
+            </span>
+            <SignOut client={client} />
+          </div>
+        )}
+      </header>
+      <main>
+        {me.isPending && <p role="status">{t("app.loading")}</p>}
+        {me.isError && <p role="alert">{t("app.unreachable")}</p>}
+        {me.isSuccess && me.data === null && (
           <p>
-            Signed in as <strong>{me.data.name || me.data.subject}</strong>
-            {me.data.isOrganizationAdmin && " (organization administrator)"}
+            <a href="/login?returnUrl=/">{t("app.signIn")}</a>
           </p>
-          <SignOut client={client} />
-          <Catalogs client={client} />
-        </>
-      )}
-    </main>
+        )}
+        {me.isSuccess && me.data !== null && <Explorer client={client} />}
+      </main>
+    </>
   );
 }
 
-function Catalogs({ client }: { client: ZirrusClient }) {
-  const catalogs = useQuery({
-    queryKey: ["catalogs"],
-    queryFn: async () => {
-      const { data, error } = await client.GET("/api/v1/catalogs");
-      if (error !== undefined || data === undefined) throw new Error("Could not load catalogs");
-      return data;
-    },
-  });
-
-  return (
-    <section aria-labelledby="catalogs-heading">
-      <h2 id="catalogs-heading">Catalogs</h2>
-      {catalogs.isPending && <p role="status">Loading…</p>}
-      {catalogs.isError && <p role="alert">Could not load catalogs.</p>}
-      {catalogs.isSuccess && catalogs.data.length === 0 && <p>No catalogs yet.</p>}
-      {catalogs.isSuccess && catalogs.data.length > 0 && (
-        <ul>
-          {catalogs.data.map((c) => (
-            <li key={c.id}>
-              {c.name} <span>({c.access})</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-/** Sign-out is a form POST with the CSRF token, so the API can end the identity-provider session too. */
+/**
+ * Sign-out is a form POST with the CSRF token, so the API can end the identity-provider session too.
+ * @param client API client.
+ */
 function SignOut({ client }: { client: ZirrusClient }) {
   const token = useQuery({
     queryKey: ["csrf"],
     queryFn: async () => {
-      const { data } = await client.GET("/api/v1/antiforgery");
-      if (data === undefined) throw new Error("Could not load the CSRF token");
+      const { data, response } = await client.GET("/api/v1/antiforgery");
+      if (data === undefined) throw new ApiError(response.status, "Could not load the CSRF token");
       return data;
     },
   });
@@ -81,7 +68,7 @@ function SignOut({ client }: { client: ZirrusClient }) {
   return (
     <form method="post" action="/logout">
       <input type="hidden" name={token.data.formFieldName} value={token.data.token} />
-      <button type="submit">Sign out</button>
+      <button type="submit">{t("app.signOut")}</button>
     </form>
   );
 }

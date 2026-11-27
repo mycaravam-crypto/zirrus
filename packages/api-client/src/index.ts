@@ -7,6 +7,9 @@ export type CatalogSummary = components["schemas"]["CatalogSummary"];
 export type CurrentUserInfo = components["schemas"]["CurrentUserInfo"];
 export type CsrfToken = components["schemas"]["CsrfToken"];
 export type AssetDetails = components["schemas"]["AssetDetails"];
+export type AssetSummary = components["schemas"]["AssetSummary"];
+export type AssetPage = components["schemas"]["AssetPage"];
+export type UploadResult = components["schemas"]["UploadResult"];
 
 /** Creates a client for the same-origin API (Caddy routes /api to the API container). */
 export function createZirrusClient(baseUrl = "") {

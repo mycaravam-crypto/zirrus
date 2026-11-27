@@ -49,6 +49,65 @@ public sealed record AssetDetails(
     }
 }
 
+/// <summary>An asset in a list (grid view).</summary>
+/// <param name="Id">Asset identifier.</param>
+/// <param name="FileName">Original file name.</param>
+/// <param name="MediaType">Media type.</param>
+/// <param name="SizeBytes">Size of the original, once stored.</param>
+/// <param name="State">Lifecycle state in lowercase.</param>
+/// <param name="StatusReason">Reason for rejected or failed assets.</param>
+/// <param name="CreatedAt">Upload time (UTC).</param>
+/// <param name="UpdatedAt">Last change (UTC).</param>
+public sealed record AssetSummary(Guid Id, string FileName, string MediaType, long? SizeBytes, string State, string? StatusReason, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+
+/// <summary>One page of a catalog's assets, newest first.</summary>
+/// <param name="Items">Assets on this page.</param>
+/// <param name="NextCursor">Opaque cursor for the next page, or null at the end.</param>
+public sealed record AssetPage(IReadOnlyList<AssetSummary> Items, string? NextCursor);
+
+/// <summary>Keyset position in a newest-first asset list.</summary>
+/// <param name="CreatedAt">Creation time of the last item seen.</param>
+/// <param name="Id">ID of the last item seen (tie-breaker).</param>
+public readonly record struct AssetListPosition(DateTimeOffset CreatedAt, Guid Id)
+{
+    /// <summary>Encodes the position as an opaque URL-safe cursor.</summary>
+    /// <returns>The cursor.</returns>
+    public string Encode() =>
+        Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{CreatedAt.UtcTicks}:{Id:N}")).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+    /// <summary>Decodes a cursor produced by <see cref="Encode"/>.</summary>
+    /// <param name="cursor">Cursor text.</param>
+    /// <param name="position">Decoded position.</param>
+    /// <returns>Whether the cursor was valid.</returns>
+    public static bool TryDecode(string? cursor, out AssetListPosition position)
+    {
+        position = default;
+        if (string.IsNullOrEmpty(cursor) || cursor.Length > 100)
+        {
+            return false;
+        }
+
+        try
+        {
+            var padded = cursor.Replace('-', '+').Replace('_', '/');
+            padded += new string('=', (4 - (padded.Length % 4)) % 4);
+            var parts = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(padded)).Split(':');
+            if (parts.Length == 2 && long.TryParse(parts[0], System.Globalization.CultureInfo.InvariantCulture, out var ticks)
+                && ticks >= DateTimeOffset.MinValue.UtcTicks && ticks <= DateTimeOffset.MaxValue.UtcTicks
+                && Guid.TryParseExact(parts[1], "N", out var id))
+            {
+                position = new AssetListPosition(new DateTimeOffset(ticks, TimeSpan.Zero), id);
+                return true;
+            }
+        }
+        catch (FormatException)
+        {
+        }
+
+        return false;
+    }
+}
+
 /// <summary>Port for loading and saving assets; implemented by the infrastructure layer.</summary>
 public interface IAssetStore
 {
@@ -58,6 +117,15 @@ public interface IAssetStore
     /// <param name="cancellationToken">Cancels the lookup.</param>
     /// <returns>The tracked asset, or null.</returns>
     Task<Asset?> FindAsync(Guid catalogId, Guid assetId, CancellationToken cancellationToken);
+
+    /// <summary>Lists a catalog's assets newest first, excluding deleted ones.</summary>
+    /// <param name="catalogId">Catalog.</param>
+    /// <param name="activeOnly">Only active assets (viewers).</param>
+    /// <param name="after">Keyset position to continue after, or null for the first page.</param>
+    /// <param name="limit">Maximum rows.</param>
+    /// <param name="cancellationToken">Cancels the query.</param>
+    /// <returns>The rows.</returns>
+    Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken);
 
     /// <summary>Loads the latest immutable metadata schema for the asset's organization and catalog.</summary>
     /// <param name="organizationId">Organization.</param>
@@ -96,6 +164,49 @@ public sealed record AssetContent(BlobRead Read, string MediaType, string FileNa
 public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, TimeProvider time, IBlobStore blobs)
 {
     private const string NotFound = "Asset not found.";
+
+    /// <summary>Default page size (ingestion-api-ui.md REST conventions).</summary>
+    public const int DefaultPageSize = 50;
+
+    /// <summary>Maximum page size.</summary>
+    public const int MaxPageSize = 200;
+
+    /// <summary>Lists the assets of a catalog the caller may see: active ones for viewers, all non-deleted ones for editors.</summary>
+    /// <param name="catalogId">Catalog.</param>
+    /// <param name="cursor">Cursor from the previous page, or null.</param>
+    /// <param name="limit">Page size (1–200; default 50).</param>
+    /// <param name="cancellationToken">Cancels the query.</param>
+    /// <returns>The page, or NotFound or Invalid.</returns>
+    public async Task<OperationResult<AssetPage>> ListAsync(Guid catalogId, string? cursor, int? limit, CancellationToken cancellationToken)
+    {
+        if (!await access.CanReadAsync(catalogId, cancellationToken))
+        {
+            return OperationResult.Fail<AssetPage>(OperationStatus.NotFound, "Catalog not found.");
+        }
+
+        var size = limit ?? DefaultPageSize;
+        if (size is < 1 or > MaxPageSize)
+        {
+            return OperationResult.Fail<AssetPage>(OperationStatus.Invalid, $"limit must be 1–{MaxPageSize}.");
+        }
+
+        AssetListPosition? after = null;
+        if (cursor is not null)
+        {
+            if (!AssetListPosition.TryDecode(cursor, out var position))
+            {
+                return OperationResult.Fail<AssetPage>(OperationStatus.Invalid, "Invalid cursor.");
+            }
+
+            after = position;
+        }
+
+        var canEdit = await access.CanEditAsync(catalogId, cancellationToken);
+        var rows = await assets.ListAsync(catalogId, activeOnly: !canEdit, after, size + 1, cancellationToken);
+        var items = rows.Take(size).ToList();
+        var next = rows.Count > size ? new AssetListPosition(items[^1].CreatedAt, items[^1].Id).Encode() : null;
+        return OperationResult.Ok(new AssetPage(items, next));
+    }
 
     /// <summary>Gets an asset the caller may see.</summary>
     /// <param name="catalogId">Catalog.</param>

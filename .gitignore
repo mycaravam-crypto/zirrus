@@ -9,3 +9,7 @@ TestResults/
 .idea/
 deploy/secrets/
 sbom/
+
+# Playwright output
+apps/web/playwright-report/
+apps/web/test-results/
