@@ -77,7 +77,14 @@ internal static class AssetEndpoints
             .Produces(StatusCodes.Status200OK, contentType: "application/octet-stream")
             .Produces(StatusCodes.Status206PartialContent)
             .ProducesProblem(StatusCodes.Status404NotFound)
-            .Produces(StatusCodes.Status416RangeNotSatisfiable);
+            .ProducesProblem(StatusCodes.Status416RangeNotSatisfiable);
+
+        // HEAD follows the same authorization and lifecycle checks as GET, without a response body.
+        assets.MapMethods("/{assetId:guid}/content", [HttpMethods.Head], HeadOriginalAsync)
+            .WithName("HeadAssetContent")
+            .WithSummary("Read original content headers for an active asset")
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         // Streams a thumbnail or preview of an active asset.
         assets.MapGet("/{assetId:guid}/renditions/{kind}", async (Guid catalogId, Guid assetId, string kind, AssetUseCases useCases, HttpContext http, CancellationToken cancellationToken) =>
@@ -90,6 +97,12 @@ internal static class AssetEndpoints
             .WithName("GetRendition")
             .WithSummary("Download the thumbnail or preview of an active asset")
             .Produces(StatusCodes.Status200OK, contentType: "image/jpeg")
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        assets.MapMethods("/{assetId:guid}/renditions/{kind}", [HttpMethods.Head], HeadRenditionAsync)
+            .WithName("HeadAssetRendition")
+            .WithSummary("Read rendition headers for an active asset")
+            .Produces(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         // Returns an asset the caller may see, with its revision as ETag.
@@ -186,6 +199,35 @@ internal static class AssetEndpoints
         }
 
         return Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "No part named 'file' was found.");
+    }
+
+    private static async Task<IResult> HeadOriginalAsync(Guid catalogId, Guid assetId, AssetUseCases useCases, HttpContext http, CancellationToken cancellationToken)
+    {
+        var result = await useCases.OpenOriginalAsync(catalogId, assetId, null, cancellationToken);
+        return result.Status == OperationStatus.Ok
+            ? Head(http, result.Value!, inline: false)
+            : Results.Problem(statusCode: StatusCodes.Status404NotFound, title: result.Error);
+    }
+
+    private static async Task<IResult> HeadRenditionAsync(Guid catalogId, Guid assetId, string kind, AssetUseCases useCases, HttpContext http, CancellationToken cancellationToken)
+    {
+        var result = await useCases.OpenRenditionAsync(catalogId, assetId, kind, cancellationToken);
+        return result.Status == OperationStatus.Ok
+            ? Head(http, result.Value!, inline: true)
+            : Results.Problem(statusCode: StatusCodes.Status404NotFound, title: result.Error);
+    }
+
+    private static IResult Head(HttpContext http, AssetContent content, bool inline)
+    {
+        var headers = http.Response.Headers;
+        headers.CacheControl = "private, no-store";
+        headers.XContentTypeOptions = "nosniff";
+        headers.AcceptRanges = "bytes";
+        headers.ContentDisposition = new ContentDispositionHeaderValue(inline ? "inline" : "attachment") { FileNameStar = content.FileName }.ToString();
+        http.Response.ContentType = content.MediaType;
+        http.Response.ContentLength = content.Read.TotalLength;
+        http.Response.RegisterForDisposeAsync(content.Read);
+        return Results.StatusCode(StatusCodes.Status200OK);
     }
 
     /// <summary>Streams an active original, honouring one byte range (206) and answering 416 with the size for unsatisfiable ranges.</summary>
