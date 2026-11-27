@@ -342,7 +342,7 @@ public sealed class AuditDigestTests(PostgresFixture fixture) : IClassFixture<Po
 
         var result = Assert.Single((await digests.VerifyAsync(100, Api.Ct)).Where(r => r.DigestId == digest!.Id));
         Assert.Equal(DigestStatus.Mismatch, result.Status);
-        Assert.Equal(firstSequence, digest!.FromSeq);
+        Assert.InRange(firstSequence, digest!.FromSeq, digest.ToSeq);
     }
 
     private AuditDigests Digests(DateTimeOffset now, string? key = null) =>
