@@ -41,6 +41,8 @@ docker compose -f deploy/compose.yaml up -d --build --wait
 open http://localhost                                     # SPA; /api/v1/catalogs returns JSON
 ```
 
+For demo data, start with the Keycloak test realm (`-f deploy/compose.yaml -f deploy/compose.test.yaml`, map `keycloak` to 127.0.0.1 as in CI) and run `python3 tools/demo-seed.py`: two catalogs, a metadata schema, categories and 24 images; sign in as `alice` / `ci-test-only-alice`.
+
 Set `ZIRRUS_SITE_ADDRESS` to a domain name for automatic HTTPS. For local development, start only the database with `docker compose -f deploy/compose.yaml -f deploy/compose.dev.yaml up -d postgres migrate`. Then run the API with `ConnectionStrings__Zirrus='Host=localhost;Database=zirrus;Username=zirrus;Password=<deploy/secrets/postgres_password>' dotnet run --project src/Zirrus.Api` and the web app with `pnpm --filter @zirrus/web dev`.
 
 ## Sign-in configuration (W2)
