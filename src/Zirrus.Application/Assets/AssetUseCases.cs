@@ -59,6 +59,13 @@ public interface IAssetStore
     /// <returns>The tracked asset, or null.</returns>
     Task<Asset?> FindAsync(Guid catalogId, Guid assetId, CancellationToken cancellationToken);
 
+    /// <summary>Loads the latest immutable metadata schema for the asset's organization and catalog.</summary>
+    /// <param name="organizationId">Organization.</param>
+    /// <param name="catalogId">Catalog.</param>
+    /// <param name="cancellationToken">Cancels the lookup.</param>
+    /// <returns>The current schema, or null if none is configured.</returns>
+    Task<MetadataSchema?> FindMetadataSchemaAsync(Guid organizationId, Guid catalogId, CancellationToken cancellationToken);
+
     /// <summary>Finds a rendition of an asset.</summary>
     /// <param name="assetId">Asset.</param>
     /// <param name="kind">Rendition kind.</param>
@@ -143,6 +150,11 @@ public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, Time
         try
         {
             metadata = AssetMetadata.Parse(metadataJson);
+            var schema = await assets.FindMetadataSchemaAsync(asset.OrganizationId, catalogId, cancellationToken);
+            if (schema is not null)
+            {
+                MetadataValidation.Validate(metadata, schema);
+            }
         }
         catch (ArgumentException e)
         {
