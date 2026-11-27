@@ -72,16 +72,19 @@ public sealed class SubprocessRenderer(ParserLimits limits, string? childAssembl
                     : throw new InvalidOperationException("parser closed its input early", e);
             }
 
+            // The child has exited, so its pipes reach end-of-file: finish reading them before stopping the
+            // timeout token they share, or a still-pending read would be cancelled under load.
+            var output = await stdout;
+            var errors = await stderr;
             await timeout.CancelAsync();
             if (await watchdog is { } exceeded)
             {
                 return new RenderResponse([], $"parser {exceeded}", null);
             }
 
-            var output = await stdout;
             if (child.ExitCode is not (0 or RejectedExitCode))
             {
-                throw new InvalidOperationException($"parser exited with code {child.ExitCode}: {Truncate(await stderr)}");
+                throw new InvalidOperationException($"parser exited with code {child.ExitCode}: {Truncate(errors)}");
             }
 
             return JsonSerializer.Deserialize<RenderResponse>(output, RenderProtocol.Json)
