@@ -15,12 +15,30 @@ internal sealed class AssetStore(ZirrusDbContext db) : IAssetStore
         db.Assets.SingleOrDefaultAsync(a => a.CatalogId == catalogId && a.Id == assetId, cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken, AssetSearchFilter? filter = null)
     {
         var query = db.Assets.AsNoTracking().Where(a => a.CatalogId == catalogId && a.State != AssetState.Deleting && a.State != AssetState.Deleted);
         if (activeOnly)
         {
             query = query.Where(a => a.State == AssetState.Active);
+        }
+
+        if (filter?.Text is { Length: > 0 } text)
+        {
+            // Fixed configurations and parameterized query text; no user-controlled SQL identifiers.
+            query = query.Where(a => EF.Functions.ToTsVector("english", a.FileName + " " + a.Metadata).Matches(EF.Functions.PlainToTsQuery("english", text))
+                || EF.Functions.ToTsVector("german", a.FileName + " " + a.Metadata).Matches(EF.Functions.PlainToTsQuery("german", text))
+                || EF.Functions.ToTsVector("simple", a.FileName + " " + a.Metadata).Matches(EF.Functions.PlainToTsQuery("simple", text)));
+        }
+
+        if (filter?.CategoryId is { } categoryId)
+        {
+            query = query.Where(a => db.AssetCategories.Any(c => c.CatalogId == a.CatalogId && c.AssetId == a.Id && c.CategoryId == categoryId));
+        }
+
+        if (filter?.MetadataJson is { } json)
+        {
+            query = query.Where(a => EF.Functions.JsonContains(a.Metadata, json));
         }
 
         if (after is { } position)
