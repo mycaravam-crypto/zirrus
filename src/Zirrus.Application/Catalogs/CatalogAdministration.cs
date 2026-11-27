@@ -1,3 +1,4 @@
+using Zirrus.Application.Audit;
 using Zirrus.Application.Identity;
 using Zirrus.Domain.Catalogs;
 
@@ -55,7 +56,8 @@ public sealed record CatalogMember(string Subject, string Role, DateTimeOffset G
 /// <param name="users">Current user accessor.</param>
 /// <param name="organization">Organization context.</param>
 /// <param name="time">Time source.</param>
-public sealed class CatalogAdministration(ICatalogStore store, ICurrentUserAccessor users, OrganizationContext organization, TimeProvider time)
+/// <param name="audit">Audit log; entries are committed with the change they describe.</param>
+public sealed class CatalogAdministration(ICatalogStore store, ICurrentUserAccessor users, OrganizationContext organization, TimeProvider time, IAuditLog audit)
 {
     /// <summary>Creates a catalog. Organization administrators only.</summary>
     /// <param name="name">Catalog name.</param>
@@ -84,6 +86,7 @@ public sealed class CatalogAdministration(ICatalogStore store, ICurrentUserAcces
         }
 
         store.Add(catalog);
+        audit.Record(new AuditEntry(AuditActions.CatalogCreate, users.User.Subject, organization.Id, catalog.Id, catalog.Id));
         await store.SaveChangesAsync(cancellationToken);
         return OperationResult.Ok<CatalogSummary>(new CatalogSummary(catalog.Id, catalog.Name, catalog.CreatedAt, "admin"));
     }
@@ -126,6 +129,7 @@ public sealed class CatalogAdministration(ICatalogStore store, ICurrentUserAcces
             return OperationResult.Fail<CatalogMember>(OperationStatus.Invalid, ex.Message);
         }
 
+        audit.Record(new AuditEntry(AuditActions.MemberGrant, users.User.Subject, organization.Id, catalog.Id, Detail: $"subject={subject}; role={ToMember(membership).Role}"));
         await store.SaveChangesAsync(cancellationToken);
         return OperationResult.Ok<CatalogMember>(ToMember(membership));
     }
@@ -150,6 +154,7 @@ public sealed class CatalogAdministration(ICatalogStore store, ICurrentUserAcces
         }
 
         store.Remove(membership);
+        audit.Record(new AuditEntry(AuditActions.MemberRevoke, users.User.Subject, organization.Id, catalogId, Detail: $"subject={subject}"));
         await store.SaveChangesAsync(cancellationToken);
         return OperationResult.Ok<bool>(true);
     }

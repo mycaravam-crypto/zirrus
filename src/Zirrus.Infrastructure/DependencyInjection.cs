@@ -58,6 +58,10 @@ public static class DependencyInjection
         services.AddScoped<ICatalogStore, CatalogStore>();
         services.AddScoped<ListCatalogs>();
         services.AddScoped<CatalogAccess>();
+        services.AddScoped<Zirrus.Application.Audit.IAuditLog, Zirrus.Infrastructure.Audit.AuditLog>();
+        services.AddScoped<Zirrus.Infrastructure.Audit.SessionAudit>();
+        services.Configure<Zirrus.Infrastructure.Audit.AuditDigestOptions>(configuration.GetSection("Audit"));
+        services.AddScoped<Zirrus.Infrastructure.Audit.AuditDigests>();
         services.AddScoped<CatalogAdministration>();
         services.AddScoped<ISchemaStore, SchemaStore>();
         services.AddScoped<SchemaAdministration>();

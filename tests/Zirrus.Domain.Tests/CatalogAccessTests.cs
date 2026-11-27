@@ -117,7 +117,7 @@ public sealed class CatalogAccessTests
     public async Task Schema_administration_validates_access_input_and_conflicts()
     {
         var store = new SchemaMemory(_press);
-        SchemaAdministration Service(CurrentUser? user) => new(store, new CatalogAccess(_catalogs, Users(user), Organization), Users(user), Organization, new FixedTime(Now));
+        SchemaAdministration Service(CurrentUser? user) => new(store, new CatalogAccess(_catalogs, Users(user), Organization), Users(user), Organization, new FixedTime(Now), _audit);
         var ct = TestContext.Current.CancellationToken;
         var fields = new[] { new MetadataFieldDefinition("title", "Title", MetadataFieldType.Text) };
         Assert.Equal(OperationStatus.NotFound, (await Service(Outsider).GetAsync(_press.Id, ct)).Status);
@@ -140,7 +140,7 @@ public sealed class CatalogAccessTests
     public async Task Category_management_validates_access_parent_and_assignment()
     {
         var store = new CategoryMemory(_press);
-        CategoryManagement Service(CurrentUser? user) => new(store, new CatalogAccess(_catalogs, Users(user), Organization), Users(user), Organization, new FixedTime(Now));
+        CategoryManagement Service(CurrentUser? user) => new(store, new CatalogAccess(_catalogs, Users(user), Organization), Users(user), Organization, new FixedTime(Now), _audit);
         var ct = TestContext.Current.CancellationToken;
         Assert.Equal(OperationStatus.NotFound, (await Service(Outsider).ListAsync(_press.Id, ct)).Status);
         Assert.Empty((await Service(Viewer).ListAsync(_press.Id, ct)).Value!);
@@ -185,6 +185,24 @@ public sealed class CatalogAccessTests
         // A viewer cannot see the categories of an asset that is no longer active.
         asset.MarkForDeletion(Now);
         Assert.Equal(OperationStatus.NotFound, (await Service(Viewer).ListForAssetAsync(_press.Id, asset.Id, ct)).Status);
+    }
+
+    [Fact]
+    public async Task Successful_administration_is_audited_with_actor_and_target()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var created = await Admin_(Admin).CreateCatalogAsync("Audited", ct);
+        await Admin_(Admin).SetMemberAsync(_press.Id, "erin", CatalogRole.Editor, ct);
+        await Admin_(Admin).RemoveMemberAsync(_press.Id, "erin", ct);
+        await Admin_(Editor).CreateCatalogAsync("Denied", ct); // forbidden: nothing is recorded
+        Assert.Equal(
+            [
+                (Application.Audit.AuditActions.CatalogCreate, created.Value!.Id, (string?)null),
+                (Application.Audit.AuditActions.MemberGrant, _press.Id, "subject=erin; role=editor"),
+                (Application.Audit.AuditActions.MemberRevoke, _press.Id, "subject=erin"),
+            ],
+            _audit.Entries.Select(e => (e.Action, e.CatalogId!.Value, e.Detail)));
+        Assert.All(_audit.Entries, e => Assert.Equal((Admin.Subject, Organization.Id), (e.Actor, e.OrganizationId)));
     }
 
     private sealed class SchemaMemory(Catalog catalog) : ISchemaStore
@@ -241,7 +259,9 @@ public sealed class CatalogAccessTests
         new ListCatalogs(_catalogs, Users(user), Organization).ExecuteAsync(CancellationToken.None);
 
     private CatalogAdministration Admin_(CurrentUser? user) =>
-        new(_catalogs, Users(user), Organization, new FixedTime(Now));
+        new(_catalogs, Users(user), Organization, new FixedTime(Now), _audit);
+
+    private readonly RecordingAudit _audit = new();
 
     private static CurrentUser? UserFor(string who) => who switch
     {

@@ -44,8 +44,13 @@ internal static class AccountEndpoints
 
         // Ends the server-side session and the identity-provider session (RP-initiated logout).
         // A form POST with the antiforgery token, so a cross-site page cannot sign users out.
-        app.MapPost("/logout", async (HttpContext context, IAuthenticationSchemeProvider schemes) =>
+        app.MapPost("/logout", async (HttpContext context, IAuthenticationSchemeProvider schemes, ICurrentUserAccessor users, Zirrus.Infrastructure.Audit.SessionAudit sessions) =>
             {
+                if (users.User is { } user)
+                {
+                    await sessions.RecordAsync(Zirrus.Application.Audit.AuditActions.SignOut, user.Subject, context.RequestAborted);
+                }
+
                 await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 return await schemes.GetSchemeAsync(OpenIdConnectDefaults.AuthenticationScheme) is null
                     ? Results.Redirect("/")

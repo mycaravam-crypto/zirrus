@@ -266,11 +266,13 @@ public sealed class IngestionUseCaseTests
     }), Organization);
 
     private UploadAsset Upload(string? who) => new(_catalogs, _store, _blobs, Access(who),
-        new StaticUser(who is null ? null : new CurrentUser(who, who, who == "admin")), Organization, new FixedTime(Now));
+        new StaticUser(who is null ? null : new CurrentUser(who, who, who == "admin")), Organization, new FixedTime(Now), _audit);
 
     private IngestionPipeline Pipeline() => new(_store, _blobs, _scanner, _renderer, _store, _queue, new FixedTime(Now));
 
-    private RetryAsset Retry(string who) => new(_store, Access(who), new FixedTime(Now));
+    private RetryAsset Retry(string who) => new(_store, Access(who), new FixedTime(Now), _audit);
+
+    private readonly RecordingAudit _audit = new();
 
     private sealed class Catalogs : ICatalogReader, ICatalogStore
     {

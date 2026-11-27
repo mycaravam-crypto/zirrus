@@ -58,6 +58,7 @@ internal sealed class CategoryStore(ZirrusDbContext db) : ICategoryStore
         await db.Database.ExecuteSqlInterpolatedAsync(
             $"INSERT INTO asset_categories (catalog_id, asset_id, category_id, assigned_at) VALUES ({assignment.CatalogId}, {assignment.AssetId}, {assignment.CategoryId}, {assignment.AssignedAt}) ON CONFLICT (asset_id, category_id) DO NOTHING",
             cancellationToken);
+        await db.SaveChangesAsync(cancellationToken); // the staged audit entry commits with the assignment
         await transaction.CommitAsync(cancellationToken);
         return true;
     }
@@ -69,7 +70,12 @@ internal sealed class CategoryStore(ZirrusDbContext db) : ICategoryStore
             .OrderBy(c => c.Name).ThenBy(c => c.Id).ToListAsync(cancellationToken);
 
     /// <inheritdoc />
-    public Task UnassignAsync(Guid catalogId, Guid assetId, Guid categoryId, CancellationToken cancellationToken) =>
-        db.AssetCategories.Where(a => a.CatalogId == catalogId && a.AssetId == assetId && a.CategoryId == categoryId)
+    public async Task UnassignAsync(Guid catalogId, Guid assetId, Guid categoryId, CancellationToken cancellationToken)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await db.AssetCategories.Where(a => a.CatalogId == catalogId && a.AssetId == assetId && a.CategoryId == categoryId)
             .ExecuteDeleteAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken); // the staged audit entry commits with the removal
+        await transaction.CommitAsync(cancellationToken);
+    }
 }

@@ -1,3 +1,4 @@
+using Zirrus.Application.Audit;
 using Zirrus.Application.Catalogs;
 using Zirrus.Application.Identity;
 using Zirrus.Domain.Assets;
@@ -25,7 +26,8 @@ public interface IAssetDeletionStore
 /// <param name="access">Catalog authorization.</param>
 /// <param name="users">Authenticated identity.</param>
 /// <param name="time">Time source.</param>
-public sealed class DeleteAsset(IAssetDeletionStore store, CatalogAccess access, ICurrentUserAccessor users, TimeProvider time)
+/// <param name="audit">Audit log; entries are committed with the change they describe.</param>
+public sealed class DeleteAsset(IAssetDeletionStore store, CatalogAccess access, ICurrentUserAccessor users, TimeProvider time, IAuditLog audit)
 {
     /// <summary>Soft-deletes an asset using optimistic concurrency.</summary>
     /// <param name="catalogId">Catalog.</param>
@@ -47,6 +49,7 @@ public sealed class DeleteAsset(IAssetDeletionStore store, CatalogAccess access,
             return OperationStatus.Forbidden;
         }
 
+        audit.Record(new AuditEntry(AuditActions.SoftDelete, user.Subject, access.OrganizationId, catalogId, assetId, $"revision={expectedRevision}"));
         return await store.DeleteAsync(catalogId, assetId, expectedRevision, user.Subject, correlationId,
             time.GetUtcNow(), cancellationToken);
     }

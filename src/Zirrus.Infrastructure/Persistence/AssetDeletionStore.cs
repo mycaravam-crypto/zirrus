@@ -5,7 +5,7 @@ using Zirrus.Domain.Assets;
 
 namespace Zirrus.Infrastructure.Persistence;
 
-/// <summary>Commits the asset lifecycle change and audit record together.</summary>
+/// <summary>Commits the asset lifecycle change and its audit record (staged by <c>IAuditLog</c>) together.</summary>
 /// <param name="db">Database context.</param>
 internal sealed class AssetDeletionStore(ZirrusDbContext db) : IAssetDeletionStore
 {
@@ -40,10 +40,6 @@ internal sealed class AssetDeletionStore(ZirrusDbContext db) : IAssetDeletionSto
             return OperationStatus.PreconditionFailed;
         }
 
-        await db.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO audit_events (id, organization_id, catalog_id, resource_id, actor, action, outcome, occurred_at, correlation_id)
-            VALUES ({Guid.NewGuid()}, {asset.OrganizationId}, {catalogId}, {assetId}, {actor}, 'asset.soft_delete', 'success', {now}, {correlationId})
-            """, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return OperationStatus.Ok;
     }

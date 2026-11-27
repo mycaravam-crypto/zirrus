@@ -20,6 +20,7 @@ public sealed class AssetUseCaseTests
     private readonly Catalog _press = Catalog.Create(Organization.Id, "Press", Now);
     private readonly Roles _roles = new();
     private readonly Assets _assets = new();
+    private readonly RecordingAudit _audit = new();
     private readonly Asset _active;
     private readonly Asset _pending;
 
@@ -138,6 +139,8 @@ public sealed class AssetUseCaseTests
         Assert.Equal(OperationStatus.Ok, result.Status);
         Assert.Equal("Harbour", result.Value!.Metadata.GetProperty("title").GetString());
         Assert.Equal(1, _assets.Saves);
+        var entry = Assert.Single(_audit.Entries);
+        Assert.Equal((Application.Audit.AuditActions.MetadataUpdate, "erin", _press.Id, _active.Id), (entry.Action, entry.Actor, entry.CatalogId, entry.ResourceId));
     }
 
     [Fact]
@@ -262,7 +265,7 @@ public sealed class AssetUseCaseTests
             "admin" => new CurrentUser("alice", "Alice", IsOrganizationAdmin: true),
             _ => new CurrentUser(who, who, IsOrganizationAdmin: false),
         };
-        return new AssetUseCases(_assets, new CatalogAccess(_roles, new StaticUser(user), Organization), new FixedTime(Now), new Blobs());
+        return new AssetUseCases(_assets, new CatalogAccess(_roles, new StaticUser(user), Organization), new FixedTime(Now), new Blobs(), _audit);
     }
 
     private sealed class Roles : ICatalogReader

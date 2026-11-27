@@ -47,6 +47,7 @@ Set `ZIRRUS_SITE_ADDRESS` to a domain name for automatic HTTPS. For local develo
 - **Identity provider:** set `ZIRRUS_OIDC_AUTHORITY` (e.g. `https://id.example.org/realms/zirrus`) and provide the client secret as the Docker secret or setting `Auth__ClientSecret`. Without an authority, `/login` answers 503.
 - **Roles:** the identity provider's realm role `admin` makes a user an organization administrator; map realm roles to a `roles` claim in the ID token. Administrators grant `editor` or `viewer` per catalog with `PUT /api/v1/catalogs/{id}/members/{subject}`.
 - **Key ring:** `deploy/init-secrets.sh` also creates `dataprotection_key`, which encrypts the Data Protection key ring stored in PostgreSQL. Production refuses to start without it.
+- **Database roles and audit:** the API and worker connect as `zirrus_app` (insert-only on the audit tables); migrations use the owner account. `init-secrets.sh` creates both connection strings and `audit_digest_key`, which signs the audit digests. On existing deployments, run `deploy/init-secrets.sh` again before upgrading: it only adds missing files.
 - **Test realm:** `deploy/keycloak/zirrus-realm.json` and `compose.test.yaml` run Keycloak for the CI end-to-end test. Their credentials are test-only.
 
 ## Assets and storage (W3)
