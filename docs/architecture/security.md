@@ -30,9 +30,9 @@ All ungranted catalogs are denied except for the organization administrator. Tes
 
 ## Audit and retention
 - **Events:** ID, actor, action, resource, outcome, UTC timestamp, correlation ID, and short non-secret detail (for example a granted role).
-- **Recorded actions** (`AuditActions`): sign-in and sign-out; upload, metadata change, retry and soft delete of assets; catalog creation; role grant and revoke; schema creation; category creation, assignment and removal.
+- **Recorded actions** (`AuditActions`): sign-in and sign-out; upload, metadata change, retry and soft delete of assets; catalog creation; role grant and revoke; schema creation; category creation, assignment and removal; authenticated API access denied with 403 or resource-hiding 404.
   - Each entry is staged in the request's unit of work and committed **in the same transaction** as the change, so a rejected or rolled-back change leaves no entry and a committed change always has one.
-  - Denied attempts are answered with 403 or 404 and are not recorded.
+  - Authenticated API requests ending in 403 or 404 are recorded independently after the response. The event contains the actor, route template, method, catalog/resource IDs when available, outcome and correlation ID; it never stores request bodies, query values or raw resource paths. Anonymous 401 responses are not attributed to a user and are not recorded.
 - **Integrity** (implemented, AuditHardening migration):
   - **Roles:** the API and worker connect as `zirrus_app`. It has DML on application tables but only `INSERT` and `SELECT` on `audit_events` and `audit_digests`, no access to the migration history, and no right to run the purge. Migrations and the `db-roles` deployment job use the owner account.
   - **Append-only for every role:** a trigger rejects `UPDATE`, `DELETE` and `TRUNCATE` on both audit tables, including for the owner. The only deletion path is `audit_purge(before)`, a `SECURITY DEFINER` function the maintenance (owner) role runs for retention.
