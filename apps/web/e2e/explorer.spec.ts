@@ -73,7 +73,7 @@ test("editor journey: upload, processing, detail, metadata, download, logout", a
   await page.getByRole("textbox", { name: "Category name" }).fill("Harbour views");
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page.getByText("Category Harbour views created.")).toBeVisible();
-  await pane.getByLabel("Add to category", { exact: true }).click();
+  await pane.getByRole("combobox", { name: "Add to category" }).click(); // the label also names the listbox
   await pane.getByRole("option", { name: "Harbour views" }).click();
   await expect(pane.getByRole("button", { name: "Remove from Harbour views" })).toBeVisible();
   await expectAccessible(page, "asset detail with categories");
