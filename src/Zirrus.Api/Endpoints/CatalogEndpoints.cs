@@ -31,6 +31,24 @@ internal static class CatalogEndpoints
 
         var admin = catalogs.MapGroup("/").RequireAuthorization(AuthenticationSetup.OrganizationAdminPolicy);
 
+        catalogs.MapGet("/{catalogId:guid}/metadata-schema", async (Guid catalogId, SchemaAdministration schemas, CancellationToken cancellationToken) =>
+                ToHttp(await schemas.GetAsync(catalogId, cancellationToken)))
+            .WithName("GetMetadataSchema")
+            .WithSummary("Read the current catalog metadata schema")
+            .Produces<SchemaDetails>()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        admin.MapPost("/{catalogId:guid}/metadata-schema", async (Guid catalogId, Zirrus.Domain.Assets.MetadataFieldDefinition[] fields,
+                SchemaAdministration schemas, CancellationToken cancellationToken) =>
+                ToHttp(await schemas.CreateAsync(catalogId, fields, cancellationToken), created: _ => $"/api/v1/catalogs/{catalogId}/metadata-schema"))
+            .WithName("CreateMetadataSchema")
+            .WithSummary("Create the initial metadata schema (organization administrators only)")
+            .Produces<SchemaDetails>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
         // Creates a catalog; organization administrators only.
         admin.MapPost("/", async (CreateCatalogRequest request, CatalogAdministration administration, CancellationToken cancellationToken) =>
                 ToHttp(await administration.CreateCatalogAsync(request.Name, cancellationToken), created: c => $"/api/v1/catalogs/{c.Id}"))
