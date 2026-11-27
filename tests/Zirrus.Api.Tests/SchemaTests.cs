@@ -444,6 +444,64 @@ public sealed class AssetApiTests(PostgresFixture fixture) : IClassFixture<Postg
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Soft_deletion_requires_permission_csrf_and_current_revision_and_hides_all_reads()
+    {
+        var catalog = await Seed.CatalogAsync(fixture, ("erin", CatalogRole.Editor), ("victor", CatalogRole.Viewer));
+        var asset = await Seed.AssetAsync(fixture, catalog);
+        var path = $"/api/v1/catalogs/{catalog.Id}/assets/{asset.Id}";
+        using var editor = fixture.Api.ClientAs("erin");
+        using var viewer = fixture.Api.ClientAs("victor");
+        using var outsider = fixture.Api.ClientAs("oscar");
+
+        async Task<HttpStatusCode> Delete(HttpClient client, int? revision, bool csrf = true)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Delete, new Uri(path, UriKind.Relative));
+            if (revision is { } value)
+            {
+                request.Headers.TryAddWithoutValidation("If-Match", $"\"{value}\"");
+            }
+
+            if (csrf)
+            {
+                request.Headers.Add("X-CSRF-TOKEN", await Api.CsrfAsync(client));
+            }
+
+            using var response = await client.SendAsync(request, Api.Ct);
+            return response.StatusCode;
+        }
+
+        Assert.Equal(HttpStatusCode.BadRequest, await Delete(editor, asset.Revision, false));
+        Assert.Equal((HttpStatusCode)428, await Delete(editor, null));
+        Assert.Equal(HttpStatusCode.Forbidden, await Delete(viewer, asset.Revision));
+        Assert.Equal(HttpStatusCode.NotFound, await Delete(outsider, asset.Revision));
+        Assert.Equal(HttpStatusCode.PreconditionFailed, await Delete(editor, asset.Revision - 1));
+        Assert.Equal(HttpStatusCode.NoContent, await Delete(editor, asset.Revision));
+        Assert.Equal(HttpStatusCode.NotFound, await Delete(editor, asset.Revision));
+
+        foreach (var client in new[] { editor, viewer })
+        {
+            foreach (var suffix in new[] { "", "/content", "/renditions/thumbnail", "/renditions/preview" })
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(path + suffix, UriKind.Relative));
+                request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 1);
+                using var response = await client.SendAsync(request, Api.Ct);
+                Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            }
+
+            var page = await client.GetFromJsonAsync<JsonElement>(new Uri($"/api/v1/catalogs/{catalog.Id}/assets", UriKind.Relative), Api.Ct);
+            Assert.Empty(page.GetProperty("items").EnumerateArray());
+        }
+
+        await using var db = fixture.CreateContext();
+        Assert.Equal(AssetState.Deleting, (await db.Assets.SingleAsync(a => a.Id == asset.Id, Api.Ct)).State);
+        var events = await db.Database.SqlQuery<int>($"""
+            SELECT count(*)::integer AS "Value" FROM audit_events
+            WHERE resource_id = {asset.Id} AND actor = 'erin' AND action = 'asset.soft_delete' AND outcome = 'success'
+            """).SingleAsync(Api.Ct);
+        Assert.Equal(1, events);
+    }
+
     private static async Task<HttpResponseMessage> PutMetadata(HttpClient client, string path, string json, string? ifMatch, bool csrf = true)
     {
         using var request = new HttpRequestMessage(HttpMethod.Put, new Uri($"{path}/metadata", UriKind.Relative))
