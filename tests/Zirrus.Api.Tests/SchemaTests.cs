@@ -351,6 +351,33 @@ public sealed class AssetApiTests(PostgresFixture fixture) : IClassFixture<Postg
     }
 
     [Fact]
+    public async Task The_asset_list_is_scoped_by_role_and_paged()
+    {
+        var press = await Seed.CatalogAsync(fixture, ("erin", CatalogRole.Editor), ("victor", CatalogRole.Viewer));
+        var active = await Seed.AssetAsync(fixture, press);
+        await Seed.AssetAsync(fixture, press);
+        await Seed.AssetAsync(fixture, press, AssetState.Quarantined);
+        var path = $"/api/v1/catalogs/{press.Id}/assets";
+
+        using var victor = fixture.Api.ClientAs("victor");
+        var viewerPage = await victor.GetFromJsonAsync<JsonElement>(new Uri(path, UriKind.Relative), Api.Ct);
+        Assert.Equal(2, viewerPage.GetProperty("items").GetArrayLength());
+
+        using var erin = fixture.Api.ClientAs("erin");
+        var first = await erin.GetFromJsonAsync<JsonElement>(new Uri($"{path}?limit=2", UriKind.Relative), Api.Ct);
+        var cursor = first.GetProperty("nextCursor").GetString();
+        var second = await erin.GetFromJsonAsync<JsonElement>(new Uri($"{path}?limit=2&cursor={cursor}", UriKind.Relative), Api.Ct);
+        var ids = first.GetProperty("items").EnumerateArray().Concat(second.GetProperty("items").EnumerateArray()).Select(i => i.GetProperty("id").GetGuid()).ToList();
+        Assert.Equal(3, ids.Distinct().Count());
+        Assert.Contains(active.Id, ids);
+        Assert.Equal(JsonValueKind.Null, second.GetProperty("nextCursor").ValueKind);
+
+        using var oscar = fixture.Api.ClientAs("oscar");
+        Assert.Equal(HttpStatusCode.NotFound, (await oscar.GetAsync(new Uri(path, UriKind.Relative), Api.Ct)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await erin.GetAsync(new Uri($"{path}?cursor=zzz", UriKind.Relative), Api.Ct)).StatusCode);
+    }
+
+    [Fact]
     public async Task Viewers_do_not_see_assets_that_are_not_active()
     {
         var press = await Seed.CatalogAsync(fixture, ("erin", CatalogRole.Editor), ("victor", CatalogRole.Viewer));

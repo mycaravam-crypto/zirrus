@@ -84,7 +84,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List a catalog's assets, newest first (viewers see active assets only)
+         * @description Cursor pagination: pass nextCursor from the previous page; limit 1–200, default 50. Search and filters follow in W5.
+         */
+        get: operations["ListAssets"];
         put?: never;
         /**
          * Upload a JPEG, PNG or WebP image into quarantine (editors)
@@ -229,6 +233,44 @@ export interface components {
             /**
              * Format: date-time
              * @description Creation time (UTC).
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Last change (UTC).
+             */
+            updatedAt: string;
+        };
+        /** @description One page of a catalog's assets, newest first. */
+        AssetPage: {
+            /** @description Assets on this page. */
+            items: components["schemas"]["AssetSummary"][];
+            /** @description Opaque cursor for the next page, or null at the end. */
+            nextCursor: null | string;
+        };
+        /** @description An asset in a list (grid view). */
+        AssetSummary: {
+            /**
+             * Format: uuid
+             * @description Asset identifier.
+             */
+            id: string;
+            /** @description Original file name. */
+            fileName: string;
+            /** @description Media type. */
+            mediaType: string;
+            /**
+             * Format: int64
+             * @description Size of the original, once stored.
+             */
+            sizeBytes: null | number | string;
+            /** @description Lifecycle state in lowercase. */
+            state: string;
+            /** @description Reason for rejected or failed assets. */
+            statusReason: null | string;
+            /**
+             * Format: date-time
+             * @description Upload time (UTC).
              */
             createdAt: string;
             /**
@@ -514,6 +556,49 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ListAssets: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number | string;
+            };
+            header?: never;
+            path: {
+                catalogId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetPage"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

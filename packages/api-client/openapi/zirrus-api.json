@@ -273,6 +273,76 @@
       }
     },
     "/api/v1/catalogs/{catalogId}/assets": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "summary": "List a catalog's assets, newest first (viewers see active assets only)",
+        "description": "Cursor pagination: pass nextCursor from the previous page; limit 1–200, default 50. Search and filters follow in W5.",
+        "operationId": "ListAssets",
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Assets"
@@ -800,6 +870,90 @@
           }
         },
         "description": "Asset as returned by the API."
+      },
+      "AssetPage": {
+        "required": [
+          "items",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetSummary"
+            },
+            "description": "Assets on this page."
+          },
+          "nextCursor": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Opaque cursor for the next page, or null at the end."
+          }
+        },
+        "description": "One page of a catalog's assets, newest first."
+      },
+      "AssetSummary": {
+        "required": [
+          "id",
+          "fileName",
+          "mediaType",
+          "sizeBytes",
+          "state",
+          "statusReason",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Asset identifier.",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string",
+            "description": "Original file name."
+          },
+          "mediaType": {
+            "type": "string",
+            "description": "Media type."
+          },
+          "sizeBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Size of the original, once stored.",
+            "format": "int64"
+          },
+          "state": {
+            "type": "string",
+            "description": "Lifecycle state in lowercase."
+          },
+          "statusReason": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Reason for rejected or failed assets."
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Upload time (UTC).",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Last change (UTC).",
+            "format": "date-time"
+          }
+        },
+        "description": "An asset in a list (grid view)."
       },
       "CatalogMember": {
         "required": [

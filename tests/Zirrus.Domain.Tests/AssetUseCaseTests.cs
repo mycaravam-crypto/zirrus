@@ -58,6 +58,47 @@ public sealed class AssetUseCaseTests
     }
 
     [Fact]
+    public async Task List_is_scoped_by_role_and_paged_with_a_cursor()
+    {
+        for (var i = 0; i < 3; i++)
+        {
+            var extra = Asset.Start(_press, $"x{i}.jpg", "image/jpeg", "erin", Now.AddMinutes(i + 1));
+            _assets.Items.Add(extra);
+        }
+
+        var viewer = await For("victor").ListAsync(_press.Id, null, null, Ct);
+        Assert.Equal([_active.Id], viewer.Value!.Items.Select(a => a.Id));
+        Assert.Null(viewer.Value.NextCursor);
+
+        var first = await For("erin").ListAsync(_press.Id, null, 3, Ct);
+        Assert.Equal(["x2.jpg", "x1.jpg", "x0.jpg"], first.Value!.Items.Select(a => a.FileName));
+        var second = await For("erin").ListAsync(_press.Id, first.Value.NextCursor, 3, Ct);
+        Assert.Equal(2, second.Value!.Items.Count);
+        Assert.Null(second.Value.NextCursor);
+        Assert.Empty(first.Value.Items.Select(a => a.Id).Intersect(second.Value.Items.Select(a => a.Id)));
+    }
+
+    [Theory]
+    [InlineData("oscar", null, null, OperationStatus.NotFound)]
+    [InlineData("erin", "not-a-cursor", null, OperationStatus.Invalid)]
+    [InlineData("erin", null, 0, OperationStatus.Invalid)]
+    [InlineData("erin", null, 201, OperationStatus.Invalid)]
+    public async Task List_rejects_outsiders_and_bad_paging(string who, string? cursor, int? limit, OperationStatus expected) =>
+        Assert.Equal(expected, (await For(who).ListAsync(_press.Id, cursor, limit, Ct)).Status);
+
+    [Fact]
+    public void Cursors_round_trip_and_reject_garbage()
+    {
+        var position = new AssetListPosition(Now, Guid.NewGuid());
+        Assert.True(AssetListPosition.TryDecode(position.Encode(), out var decoded));
+        Assert.Equal(position, decoded);
+        Assert.False(AssetListPosition.TryDecode("", out _));
+        Assert.False(AssetListPosition.TryDecode(new string('a', 101), out _));
+        Assert.False(AssetListPosition.TryDecode("bm90OmFndWlk", out _)); // "not:aguid"
+        Assert.False(AssetListPosition.TryDecode("%%%", out _));
+    }
+
+    [Fact]
     public async Task Get_of_an_unknown_asset_is_not_found() =>
         Assert.Equal(OperationStatus.NotFound, (await For("erin").GetAsync(_press.Id, Guid.NewGuid(), Ct)).Status);
 
@@ -195,6 +236,14 @@ public sealed class AssetUseCaseTests
 
         public Task<Rendition?> FindRenditionAsync(Guid assetId, string kind, CancellationToken cancellationToken) =>
             Task.FromResult<Rendition?>(null);
+
+        public Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<AssetSummary>>(Items
+                .Where(a => a.CatalogId == catalogId && (!activeOnly || a.State == AssetState.Active))
+                .Where(a => after is not { } p || a.CreatedAt < p.CreatedAt || (a.CreatedAt == p.CreatedAt && a.Id.CompareTo(p.Id) < 0))
+                .OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.Id).Take(limit)
+                .Select(a => new AssetSummary(a.Id, a.FileName, a.MediaType, a.SizeBytes, a.State.ToString().ToLowerInvariant(), a.StatusReason, a.CreatedAt, a.UpdatedAt))
+                .ToList());
 
         public Task<bool> TrySaveChangesAsync(CancellationToken cancellationToken)
         {
