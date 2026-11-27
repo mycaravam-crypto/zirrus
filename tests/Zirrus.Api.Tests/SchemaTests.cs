@@ -378,6 +378,51 @@ public sealed class AssetApiTests(PostgresFixture fixture) : IClassFixture<Postg
     }
 
     [Fact]
+    public async Task Search_combines_metadata_category_and_language_filters_without_leaking_assets()
+    {
+        var press = await Seed.CatalogAsync(fixture, ("erin", CatalogRole.Editor), ("victor", CatalogRole.Viewer));
+        var archive = await Seed.CatalogAsync(fixture);
+        var matching = await Seed.AssetAsync(fixture, press);
+        var other = await Seed.AssetAsync(fixture, press);
+        var foreign = await Seed.AssetAsync(fixture, archive);
+        await Seed.AssetAsync(fixture, press, AssetState.Quarantined);
+        var category = Category.CreateRoot(press, "Travel", DateTimeOffset.UtcNow);
+        await using (var db = fixture.CreateContext())
+        {
+            foreach (var id in new[] { matching.Id, other.Id, foreign.Id })
+            {
+                var asset = await db.Assets.SingleAsync(a => a.Id == id, Api.Ct);
+                asset.UpdateMetadata(AssetMetadata.Parse("""{"title":"Häuser running","rating":5}"""), asset.Revision, DateTimeOffset.UtcNow);
+            }
+
+            db.Categories.Add(category);
+            db.AssetCategories.Add(AssetCategory.Assign(matching, category, DateTimeOffset.UtcNow));
+            await db.SaveChangesAsync(Api.Ct);
+        }
+
+        using var editor = fixture.Api.ClientAs("erin");
+        using var viewer = fixture.Api.ClientAs("victor");
+        using var outsider = fixture.Api.ClientAs("oscar");
+        var path = $"/api/v1/catalogs/{press.Id}/assets";
+        var filter = Uri.EscapeDataString("""{"rating":5}""");
+        foreach (var term in new[] { "run", "Haus" })
+        {
+            var url = new Uri($"{path}?q={term}&categoryId={category.Id}&metadata={filter}", UriKind.Relative);
+            foreach (var client in new[] { editor, viewer })
+            {
+                var page = await client.GetFromJsonAsync<JsonElement>(url, Api.Ct);
+                Assert.Equal(matching.Id, Assert.Single(page.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+            }
+
+            using var denied = await outsider.GetAsync(url, Api.Ct);
+            Assert.Equal(HttpStatusCode.NotFound, denied.StatusCode);
+        }
+
+        using var invalid = await editor.GetAsync(new Uri($"{path}?metadata=%5B1%5D", UriKind.Relative), Api.Ct);
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+    }
+
+    [Fact]
     public async Task Viewers_do_not_see_assets_that_are_not_active()
     {
         var press = await Seed.CatalogAsync(fixture, ("erin", CatalogRole.Editor), ("victor", CatalogRole.Viewer));
