@@ -182,10 +182,21 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
             "CREATE SCHEMA audit_probe",
             "ALTER TABLE audit_events ADD COLUMN privilege_probe text",
             "GRANT SELECT ON audit_events TO PUBLIC",
+            "CREATE ROLE zirrus_audit_probe NOLOGIN",
+            "ALTER SCHEMA public OWNER TO zirrus_app",
         })
         {
-            var error = await Assert.ThrowsAsync<PostgresException>(() => Execute(app, sql));
-            Assert.Contains(error.SqlState, new[] { PostgresErrorCodes.InsufficientPrivilege, "42501" });
+            try
+            {
+                await Execute(app, sql);
+            }
+            catch (PostgresException error)
+            {
+                Assert.Contains(error.SqlState, new[] { PostgresErrorCodes.InsufficientPrivilege, "42501" });
+                continue;
+            }
+
+            Assert.Fail($"The application role unexpectedly executed: {sql}");
         }
     }
 
