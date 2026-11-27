@@ -59,7 +59,7 @@ export function Explorer({ client }: { client: ZirrusClient }) {
           <>
             <h2 id="assets-heading">{t("assets.heading", { catalog: catalog.name })}</h2>
             {canEdit && <UploadPanel client={client} catalogId={catalog.id} />}
-            <AssetGrid client={client} catalogId={catalog.id} selected={assetId} onSelect={setAssetId} />
+            <AssetGrid key={catalog.id} client={client} catalogId={catalog.id} selected={assetId} onSelect={setAssetId} />
           </>
         )}
       </section>

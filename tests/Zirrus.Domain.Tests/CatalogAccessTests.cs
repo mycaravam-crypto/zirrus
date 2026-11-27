@@ -2,6 +2,7 @@ using Zirrus.Application;
 using Zirrus.Application.Catalogs;
 using Zirrus.Application.Identity;
 using Zirrus.Domain.Catalogs;
+using Zirrus.Domain.Assets;
 
 namespace Zirrus.Domain.Tests;
 
@@ -110,6 +111,100 @@ public sealed class CatalogAccessTests
         Assert.Equal(OperationStatus.NotFound, (await Admin_(Admin).SetMemberAsync(Guid.NewGuid(), "x", CatalogRole.Viewer, CancellationToken.None)).Status);
         Assert.Equal(OperationStatus.Invalid, (await Admin_(Admin).SetMemberAsync(_press.Id, " padded ", CatalogRole.Viewer, CancellationToken.None)).Status);
         Assert.Equal(OperationStatus.Invalid, (await Admin_(Admin).SetMemberAsync(_press.Id, Editor.Subject, (CatalogRole)42, CancellationToken.None)).Status);
+    }
+
+    [Fact]
+    public async Task Schema_administration_validates_access_input_and_conflicts()
+    {
+        var store = new SchemaMemory(_press);
+        SchemaAdministration Service(CurrentUser? user) => new(store, new CatalogAccess(_catalogs, Users(user), Organization), Users(user), Organization, new FixedTime(Now));
+        var ct = TestContext.Current.CancellationToken;
+        var fields = new[] { new MetadataFieldDefinition("title", "Title", MetadataFieldType.Text) };
+        Assert.Equal(OperationStatus.NotFound, (await Service(Outsider).GetAsync(_press.Id, ct)).Status);
+        Assert.Equal(0, (await Service(Viewer).GetAsync(_press.Id, ct)).Value!.Version);
+        Assert.Equal(OperationStatus.Forbidden, (await Service(Editor).CreateAsync(_press.Id, fields, ct)).Status);
+        Assert.Equal(OperationStatus.Forbidden, (await Service(null).CreateAsync(_press.Id, fields, ct)).Status);
+        Assert.Equal(OperationStatus.NotFound, (await Service(Admin).CreateAsync(_archive.Id, fields, ct)).Status);
+        Assert.Equal(OperationStatus.Invalid, (await Service(Admin).CreateAsync(_press.Id, null, ct)).Status);
+        Assert.Equal(OperationStatus.Invalid, (await Service(Admin).CreateAsync(_press.Id, [null!], ct)).Status);
+        Assert.Equal(OperationStatus.Invalid, (await Service(Admin).CreateAsync(_press.Id, [new("INVALID!", "Title", MetadataFieldType.Text)], ct)).Status);
+        store.RejectInsert = true;
+        Assert.Equal(OperationStatus.Conflict, (await Service(Admin).CreateAsync(_press.Id, fields, ct)).Status);
+        store.RejectInsert = false;
+        Assert.Equal(OperationStatus.Ok, (await Service(Admin).CreateAsync(_press.Id, fields, ct)).Status);
+        Assert.Equal(1, (await Service(Viewer).GetAsync(_press.Id, ct)).Value!.Version);
+        Assert.Equal(OperationStatus.Conflict, (await Service(Admin).CreateAsync(_press.Id, fields, ct)).Status);
+    }
+
+    [Fact]
+    public async Task Category_management_validates_access_parent_and_assignment()
+    {
+        var store = new CategoryMemory(_press);
+        CategoryManagement Service(CurrentUser? user) => new(store, new CatalogAccess(_catalogs, Users(user), Organization), Users(user), Organization, new FixedTime(Now));
+        var ct = TestContext.Current.CancellationToken;
+        Assert.Equal(OperationStatus.NotFound, (await Service(Outsider).ListAsync(_press.Id, ct)).Status);
+        Assert.Empty((await Service(Viewer).ListAsync(_press.Id, ct)).Value!);
+        Assert.Equal(OperationStatus.Forbidden, (await Service(Editor).CreateAsync(_press.Id, null, "Root", ct)).Status);
+        Assert.Equal(OperationStatus.Forbidden, (await Service(null).CreateAsync(_press.Id, null, "Root", ct)).Status);
+        Assert.Equal(OperationStatus.NotFound, (await Service(Admin).CreateAsync(_archive.Id, null, "Root", ct)).Status);
+        Assert.Equal(OperationStatus.NotFound, (await Service(Admin).CreateAsync(_press.Id, Guid.NewGuid(), "Child", ct)).Status);
+        Assert.Equal(OperationStatus.Invalid, (await Service(Admin).CreateAsync(_press.Id, null, " ", ct)).Status);
+        var root = (await Service(Admin).CreateAsync(_press.Id, null, "Root", ct)).Value!;
+        var child = (await Service(Admin).CreateAsync(_press.Id, root.Id, "Child", ct)).Value!;
+        Assert.Equal(root.Id, child.ParentId);
+        Assert.Equal(2, (await Service(Viewer).ListAsync(_press.Id, ct)).Value!.Count);
+        Assert.Equal(OperationStatus.Conflict, (await Service(Admin).CreateAsync(_press.Id, null, "Root", ct)).Status);
+        var asset = Asset.Start(_press, "photo.jpg", "image/jpeg", Editor.Subject, Now);
+        store.Asset = asset;
+        Assert.Equal(OperationStatus.NotFound, (await Service(Outsider).AssignAsync(_press.Id, asset.Id, root.Id, ct)).Status);
+        Assert.Equal(OperationStatus.Forbidden, (await Service(Viewer).AssignAsync(_press.Id, asset.Id, root.Id, ct)).Status);
+        Assert.Equal(OperationStatus.NotFound, (await Service(Editor).AssignAsync(_press.Id, Guid.NewGuid(), root.Id, ct)).Status);
+        Assert.Equal(OperationStatus.NotFound, (await Service(Editor).AssignAsync(_press.Id, asset.Id, root.Id, ct)).Status);
+        asset.MarkStored(new string('a', 64), 4, Now);
+        asset.BeginProcessing(Now);
+        asset.Activate(Now);
+        Assert.Equal(OperationStatus.NotFound, (await Service(Editor).AssignAsync(_press.Id, asset.Id, Guid.NewGuid(), ct)).Status);
+        store.RejectAssignment = true;
+        Assert.Equal(OperationStatus.NotFound, (await Service(Editor).AssignAsync(_press.Id, asset.Id, root.Id, ct)).Status);
+        store.RejectAssignment = false;
+        Assert.Equal(OperationStatus.Ok, (await Service(Editor).AssignAsync(_press.Id, asset.Id, root.Id, ct)).Status);
+    }
+
+    private sealed class SchemaMemory(Catalog catalog) : ISchemaStore
+    {
+        private MetadataSchema? _schema;
+        public bool RejectInsert { get; set; }
+        public Task<Catalog?> FindCatalogAsync(Guid organizationId, Guid catalogId, CancellationToken cancellationToken) =>
+            Task.FromResult<Catalog?>(catalog.Id == catalogId && catalog.OrganizationId == organizationId ? catalog : null);
+        public Task<MetadataSchema?> FindLatestAsync(Guid organizationId, Guid catalogId, CancellationToken cancellationToken) => Task.FromResult(_schema);
+        public Task<bool> TryAddAsync(MetadataSchema schema, CancellationToken cancellationToken)
+        {
+            if (RejectInsert) return Task.FromResult(false);
+            _schema = schema;
+            return Task.FromResult(true);
+        }
+    }
+
+    private sealed class CategoryMemory(Catalog catalog) : ICategoryStore
+    {
+        private readonly List<Category> _nodes = [];
+        public Asset? Asset { get; set; }
+        public bool RejectAssignment { get; set; }
+        public Task<IReadOnlyList<Category>> ListAsync(Guid organizationId, Guid catalogId, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<Category>>(_nodes);
+        public Task<Category?> FindCategoryAsync(Guid organizationId, Guid catalogId, Guid categoryId, CancellationToken cancellationToken) =>
+            Task.FromResult(_nodes.SingleOrDefault(c => c.Id == categoryId));
+        public Task<Catalog?> FindCatalogAsync(Guid organizationId, Guid catalogId, CancellationToken cancellationToken) =>
+            Task.FromResult<Catalog?>(catalog.Id == catalogId && catalog.OrganizationId == organizationId ? catalog : null);
+        public Task<Asset?> FindAssetAsync(Guid organizationId, Guid catalogId, Guid assetId, CancellationToken cancellationToken) =>
+            Task.FromResult(Asset?.Id == assetId ? Asset : null);
+        public Task<bool> TryAddAsync(Category category, CancellationToken cancellationToken)
+        {
+            if (_nodes.Any(c => c.ParentId == category.ParentId && c.Name == category.Name)) return Task.FromResult(false);
+            _nodes.Add(category);
+            return Task.FromResult(true);
+        }
+        public Task<bool> AssignAsync(AssetCategory assignment, CancellationToken cancellationToken) => Task.FromResult(!RejectAssignment);
     }
 
     private Task<IReadOnlyList<CatalogSummary>> List(CurrentUser? user) =>

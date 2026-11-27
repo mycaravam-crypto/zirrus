@@ -13,6 +13,11 @@ public sealed record CreateCatalogRequest(string Name);
 /// <param name="Role">Role: <c>editor</c> or <c>viewer</c>.</param>
 public sealed record SetCatalogMemberRequest(string Role);
 
+/// <summary>Request to create a category.</summary>
+/// <param name="Name">Display name.</param>
+/// <param name="ParentId">Parent category, or null for a root.</param>
+public sealed record CreateCategoryRequest(string Name, Guid? ParentId = null);
+
 /// <summary>Catalog and role-assignment endpoints.</summary>
 internal static class CatalogEndpoints
 {
@@ -30,6 +35,52 @@ internal static class CatalogEndpoints
             .WithDescription("Organization administrators see every catalog; other users see the catalogs they hold a role in.");
 
         var admin = catalogs.MapGroup("/").RequireAuthorization(AuthenticationSetup.OrganizationAdminPolicy);
+
+        catalogs.MapGet("/{catalogId:guid}/metadata-schema", async (Guid catalogId, SchemaAdministration schemas, CancellationToken cancellationToken) =>
+                ToHttp(await schemas.GetAsync(catalogId, cancellationToken)))
+            .WithName("GetMetadataSchema")
+            .WithSummary("Read the current catalog metadata schema")
+            .Produces<SchemaDetails>()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        admin.MapPost("/{catalogId:guid}/metadata-schema", async (Guid catalogId, Zirrus.Domain.Assets.MetadataFieldDefinition[] fields,
+                SchemaAdministration schemas, CancellationToken cancellationToken) =>
+                ToHttp(await schemas.CreateAsync(catalogId, fields, cancellationToken), created: _ => $"/api/v1/catalogs/{catalogId}/metadata-schema"))
+            .WithName("CreateMetadataSchema")
+            .WithSummary("Create the initial metadata schema (organization administrators only)")
+            .Produces<SchemaDetails>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
+        catalogs.MapGet("/{catalogId:guid}/categories", async (Guid catalogId, CategoryManagement categories, CancellationToken cancellationToken) =>
+                ToHttp(await categories.ListAsync(catalogId, cancellationToken)))
+            .WithName("ListCategories")
+            .WithSummary("List the catalog category tree")
+            .Produces<IReadOnlyList<CategoryDetails>>()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
+        admin.MapPost("/{catalogId:guid}/categories", async (Guid catalogId, CreateCategoryRequest request,
+                CategoryManagement categories, CancellationToken cancellationToken) =>
+                ToHttp(await categories.CreateAsync(catalogId, request.ParentId, request.Name, cancellationToken),
+                    created: _ => $"/api/v1/catalogs/{catalogId}/categories"))
+            .WithName("CreateCategory")
+            .WithSummary("Create a root or child category (administrators only)")
+            .Produces<CategoryDetails>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
+        catalogs.MapPut("/{catalogId:guid}/assets/{assetId:guid}/categories/{categoryId:guid}",
+                async (Guid catalogId, Guid assetId, Guid categoryId, CategoryManagement categories, CancellationToken cancellationToken) =>
+                    ToHttp(await categories.AssignAsync(catalogId, assetId, categoryId, cancellationToken)))
+            .WithName("AssignAssetCategory")
+            .WithSummary("Assign an active asset to a category (editors)")
+            .Produces<CategoryDetails>()
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         // Creates a catalog; organization administrators only.
         admin.MapPost("/", async (CreateCatalogRequest request, CatalogAdministration administration, CancellationToken cancellationToken) =>

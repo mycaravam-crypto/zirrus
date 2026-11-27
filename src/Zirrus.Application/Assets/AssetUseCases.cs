@@ -124,8 +124,9 @@ public interface IAssetStore
     /// <param name="after">Keyset position to continue after, or null for the first page.</param>
     /// <param name="limit">Maximum rows.</param>
     /// <param name="cancellationToken">Cancels the query.</param>
+    /// <param name="filter">Optional search criteria.</param>
     /// <returns>The rows.</returns>
-    Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken);
+    Task<IReadOnlyList<AssetSummary>> ListAsync(Guid catalogId, bool activeOnly, AssetListPosition? after, int limit, CancellationToken cancellationToken, AssetSearchFilter? filter = null);
 
     /// <summary>Loads the latest immutable metadata schema for the asset's organization and catalog.</summary>
     /// <param name="organizationId">Organization.</param>
@@ -176,12 +177,18 @@ public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, Time
     /// <param name="cursor">Cursor from the previous page, or null.</param>
     /// <param name="limit">Page size (1–200; default 50).</param>
     /// <param name="cancellationToken">Cancels the query.</param>
+    /// <param name="filter">Optional search criteria.</param>
     /// <returns>The page, or NotFound or Invalid.</returns>
-    public async Task<OperationResult<AssetPage>> ListAsync(Guid catalogId, string? cursor, int? limit, CancellationToken cancellationToken)
+    public async Task<OperationResult<AssetPage>> ListAsync(Guid catalogId, string? cursor, int? limit, CancellationToken cancellationToken, AssetSearchFilter? filter = null)
     {
         if (!await access.CanReadAsync(catalogId, cancellationToken))
         {
             return OperationResult.Fail<AssetPage>(OperationStatus.NotFound, "Catalog not found.");
+        }
+
+        if (filter is not null && !filter.IsValid())
+        {
+            return OperationResult.Fail<AssetPage>(OperationStatus.Invalid, "Invalid search criteria.");
         }
 
         var size = limit ?? DefaultPageSize;
@@ -202,7 +209,7 @@ public sealed class AssetUseCases(IAssetStore assets, CatalogAccess access, Time
         }
 
         var canEdit = await access.CanEditAsync(catalogId, cancellationToken);
-        var rows = await assets.ListAsync(catalogId, activeOnly: !canEdit, after, size + 1, cancellationToken);
+        var rows = await assets.ListAsync(catalogId, activeOnly: !canEdit || filter?.HasCriteria == true, after, size + 1, cancellationToken, filter);
         var items = rows.Take(size).ToList();
         var next = rows.Count > size ? new AssetListPosition(items[^1].CreatedAt, items[^1].Id).Encode() : null;
         return OperationResult.Ok(new AssetPage(items, next));
