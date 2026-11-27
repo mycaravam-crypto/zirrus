@@ -6,6 +6,7 @@ import type { ZirrusClient } from "@zirrus/api-client";
 import { useId, useState } from "react";
 import { ApiError, csrfToken, uploadFile } from "../api";
 import { t } from "../i18n";
+import { endSession } from "../queryClient";
 import { assetsKey } from "./keys";
 
 type Status = { id: number; name: string; message: string; kind: "progress" | "done" | "error"; percent: number };
@@ -54,6 +55,11 @@ export function UploadPanel({ client, catalogId }: { client: ZirrusClient; catal
                 : t("upload.done", { name: file.name }),
           });
         } catch (error) {
+          if (error instanceof ApiError && error.status === 401) {
+            endSession(queryClient); // the session ended: back to sign-in, no cached data
+            return;
+          }
+
           const reason = error instanceof ApiError ? error.message : String(error);
           update(id, { name: file.name, kind: "error", percent: 0, message: t("upload.failed", { name: file.name, reason }) });
         }

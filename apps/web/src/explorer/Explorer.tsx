@@ -7,6 +7,7 @@ import { ApiError } from "../api";
 import { t, type MessageKey } from "../i18n";
 import { AssetDetail } from "./AssetDetail";
 import { AssetGrid } from "./AssetGrid";
+import { CategoryNav } from "./CategoryNav";
 import { UploadPanel } from "./UploadPanel";
 
 const accessColor: Record<string, string> = { admin: "grape.9", editor: "brand", viewer: "gray.7" };
@@ -19,6 +20,8 @@ const accessColor: Record<string, string> = { admin: "grape.9", editor: "brand",
 export function Explorer({ client, onNavigate }: { client: ZirrusClient; onNavigate: () => void }) {
   const [catalogId, setCatalogId] = useState<string | null>(null);
   const [assetId, setAssetId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const catalogs = useQuery({
     queryKey: ["catalogs"],
     queryFn: async () => {
@@ -76,6 +79,8 @@ export function Explorer({ client, onNavigate }: { client: ZirrusClient; onNavig
                       onClick={() => {
                         setCatalogId(c.id);
                         setAssetId(null);
+                        setSearch("");
+                        setCategoryId(null);
                         onNavigate();
                       }}
                     />
@@ -83,6 +88,20 @@ export function Explorer({ client, onNavigate }: { client: ZirrusClient; onNavig
                 );
               })}
             </ul>
+          )}
+          {catalog !== null && (
+            <CategoryNav
+              key={catalog.id}
+              client={client}
+              catalogId={catalog.id}
+              search={search}
+              selected={categoryId}
+              onSelect={(id) => {
+                setCategoryId(id);
+                onNavigate();
+              }}
+              canAdminister={catalog.access === "admin"}
+            />
           )}
         </AppShell.Section>
       </AppShell.Navbar>
@@ -114,7 +133,17 @@ export function Explorer({ client, onNavigate }: { client: ZirrusClient; onNavig
                   </div>
                 </Group>
                 {canEdit && <UploadPanel client={client} catalogId={catalog.id} />}
-                <AssetGrid key={catalog.id} client={client} catalogId={catalog.id} selected={assetId} onSelect={setAssetId} />
+                <AssetGrid
+                  key={catalog.id}
+                  client={client}
+                  catalogId={catalog.id}
+                  search={search}
+                  onSearch={setSearch}
+                  categoryId={categoryId}
+                  onClearCategory={() => setCategoryId(null)}
+                  selected={assetId}
+                  onSelect={setAssetId}
+                />
               </Stack>
             )}
           </section>

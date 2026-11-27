@@ -1,20 +1,23 @@
-import { ActionIcon, Alert, Badge, Button, Code, Group, Stack, Text, TextInput, Title } from "@mantine/core";
-import { IconAlertCircle, IconAlertTriangle, IconCircleCheck, IconDeviceFloppy, IconEye, IconPlus, IconTrash } from "@tabler/icons-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ActionIcon, Alert, Button, Code, Group, Loader, Stack, Text, TextInput } from "@mantine/core";
+import { IconAlertCircle, IconDeviceFloppy, IconEye, IconPlus, IconTrash } from "@tabler/icons-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AssetDetails, ZirrusClient } from "@zirrus/api-client";
 import { useId, useState } from "react";
-import { ApiError, csrfToken, problemTitle } from "../api";
+import { ApiError } from "../api";
 import { t } from "../i18n";
-import { assetKey } from "./keys";
+import { assetKey, schemaKey } from "./keys";
+import { MetadataHeading, SaveFeedback, useSaveMetadata } from "./saveMetadata";
+import { TypedMetadataForm } from "./TypedMetadataForm";
 
 type Row = { id: number; key: string; value: string };
 
 const keyPattern = /^[a-z][a-z0-9_]{0,63}$/;
 
 /**
- * Edits an asset's metadata as text fields. Saves send If-Match with the revision the form was
- * loaded from; a 412 means someone else saved first, and the user reloads instead of overwriting.
- * Structured (non-text) values are kept unchanged until typed fields arrive with W5 (#25).
+ * Edits an asset's metadata. With a catalog schema it shows typed fields (TypedMetadataForm);
+ * without one, free key/value text rows, keeping structured (non-text) values unchanged. Saves send
+ * If-Match with the revision the form was loaded from; a 412 means someone else saved first, and the
+ * user reloads instead of overwriting.
  * @param client API client.
  * @param catalogId Catalog of the asset.
  * @param asset Asset with its current revision and metadata.
@@ -33,6 +36,32 @@ export function MetadataEditor({
 }) {
   // Remount (and reset the form) whenever a new revision is loaded; remember which one we saved.
   const [savedRevision, setSavedRevision] = useState<number | null>(null);
+  const schema = useQuery({
+    queryKey: schemaKey(catalogId),
+    queryFn: async () => {
+      const { data, response } = await client.GET("/api/v1/catalogs/{catalogId}/metadata-schema", { params: { path: { catalogId } } });
+      if (data === undefined) throw new ApiError(response.status, "Could not load the metadata schema");
+      return data;
+    },
+  });
+
+  if (schema.isPending) return <Loader size="sm" aria-label={t("app.loading")} />;
+  if (schema.isSuccess && Number(schema.data.version) > 0) {
+    return (
+      <TypedMetadataForm
+        key={`${asset.id}:${asset.revision}`}
+        client={client}
+        catalogId={catalogId}
+        asset={asset}
+        schema={schema.data}
+        canEdit={canEdit}
+        saved={savedRevision === Number(asset.revision)}
+        onSaved={setSavedRevision}
+      />
+    );
+  }
+
+  // Without a schema (or if it cannot be loaded) the free-form editor keeps working.
   return (
     <Form
       key={`${asset.id}:${asset.revision}`}
@@ -80,42 +109,19 @@ function Form({
       .map(([key, value], id) => ({ id, key, value: value as string })),
   );
   const [nextId, setNextId] = useState(rows.length);
-  const [conflict, setConflict] = useState(false);
+  const { save, conflict } = useSaveMetadata(client, catalogId, asset, onSaved);
 
   const keys = rows.map((r) => r.key.trim());
   const invalid = rows.find((r) => !keyPattern.test(r.key.trim()));
   const duplicate = keys.find((k, i) => keys.indexOf(k) !== i);
 
-  const save = useMutation({
-    mutationFn: async () => {
-      const body: Record<string, unknown> = Object.fromEntries(structured);
-      for (const row of rows) body[row.key.trim()] = row.value;
-      const token = await csrfToken(client);
-      const { data, error, response } = await client.PUT("/api/v1/catalogs/{catalogId}/assets/{assetId}/metadata", {
-        params: { path: { catalogId, assetId: asset.id }, header: { "If-Match": `"${asset.revision}"` } },
-        headers: { "X-CSRF-TOKEN": token },
-        body,
-      });
-      if (data === undefined) throw new ApiError(response.status, problemTitle(error, `HTTP ${response.status}`));
-      return data;
-    },
-    onSuccess: (data) => {
-      onSaved(Number(data.revision));
-      queryClient.setQueryData(assetKey(catalogId, asset.id), data);
-    },
-    onError: (error) => setConflict(error instanceof ApiError && error.status === 412),
-  });
+  const body = () => {
+    const result: Record<string, unknown> = Object.fromEntries(structured);
+    for (const row of rows) result[row.key.trim()] = row.value;
+    return result;
+  };
 
-  const heading = (
-    <Group justify="space-between" align="center">
-      <Title order={3} size="h5" id={`${formId}-heading`}>
-        {t("metadata.heading")}
-      </Title>
-      <Badge variant="default" size="sm" radius="sm">
-        {t("metadata.revision", { revision: String(asset.revision) })}
-      </Badge>
-    </Group>
-  );
+  const heading = <MetadataHeading id={`${formId}-heading`} revision={asset.revision} />;
 
   if (!canEdit) {
     const entries = Object.entries(metadata);
@@ -148,7 +154,7 @@ function Form({
       aria-labelledby={`${formId}-heading`}
       onSubmit={(event) => {
         event.preventDefault();
-        if (invalid === undefined && duplicate === undefined) save.mutate();
+        if (invalid === undefined && duplicate === undefined) save.mutate(body());
       }}
     >
       <Stack gap="sm">
@@ -239,31 +245,12 @@ function Form({
             {t("metadata.save")}
           </Button>
         </Group>
-        {saved && (
-          <Group gap={6} role="status" className="saved-note">
-            <IconCircleCheck size={16} aria-hidden="true" />
-            <Text size="sm">{t("metadata.saved")}</Text>
-          </Group>
-        )}
-        {conflict && (
-          <Alert color="orange.9" variant="light" icon={<IconAlertTriangle />} title={t("metadata.conflictTitle")}>
-            <Stack gap="xs" align="flex-start">
-              <Text size="sm">{t("metadata.conflict")}</Text>
-              <Button
-                size="xs"
-                variant="default"
-                onClick={() => void queryClient.invalidateQueries({ queryKey: assetKey(catalogId, asset.id) })}
-              >
-                {t("metadata.reload")}
-              </Button>
-            </Stack>
-          </Alert>
-        )}
-        {save.isError && !conflict && (
-          <Alert color="red.9" variant="light" icon={<IconAlertCircle />} p="xs">
-            <Text size="sm">{t("metadata.failed", { reason: save.error.message })}</Text>
-          </Alert>
-        )}
+        <SaveFeedback
+          saved={saved}
+          conflict={conflict}
+          error={save.error}
+          onReload={() => void queryClient.invalidateQueries({ queryKey: assetKey(catalogId, asset.id) })}
+        />
       </Stack>
     </form>
   );

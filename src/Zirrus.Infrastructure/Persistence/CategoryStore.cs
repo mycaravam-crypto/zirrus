@@ -61,4 +61,15 @@ internal sealed class CategoryStore(ZirrusDbContext db) : ICategoryStore
         await transaction.CommitAsync(cancellationToken);
         return true;
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Category>> ListForAssetAsync(Guid catalogId, Guid assetId, CancellationToken cancellationToken) =>
+        await db.Categories.AsNoTracking()
+            .Where(c => c.CatalogId == catalogId && db.AssetCategories.Any(a => a.CatalogId == catalogId && a.AssetId == assetId && a.CategoryId == c.Id))
+            .OrderBy(c => c.Name).ThenBy(c => c.Id).ToListAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public Task UnassignAsync(Guid catalogId, Guid assetId, Guid categoryId, CancellationToken cancellationToken) =>
+        db.AssetCategories.Where(a => a.CatalogId == catalogId && a.AssetId == assetId && a.CategoryId == categoryId)
+            .ExecuteDeleteAsync(cancellationToken);
 }

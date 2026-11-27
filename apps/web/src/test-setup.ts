@@ -22,3 +22,10 @@ class ResizeObserverStub {
 }
 window.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
 window.HTMLElement.prototype.scrollIntoView ??= () => {};
+
+// Mantine's autosizing Textarea listens for font loading, which jsdom does not implement.
+if (!("fonts" in document)) {
+  Object.defineProperty(document, "fonts", {
+    value: { addEventListener: () => {}, removeEventListener: () => {}, ready: Promise.resolve() },
+  });
+}
