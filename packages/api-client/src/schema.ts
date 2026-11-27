@@ -222,7 +222,8 @@ export interface paths {
         post?: never;
         delete?: never;
         options?: never;
-        head?: never;
+        /** Read original content headers for an active asset */
+        head: operations["HeadAssetContent"];
         patch?: never;
         trace?: never;
     };
@@ -239,7 +240,8 @@ export interface paths {
         post?: never;
         delete?: never;
         options?: never;
-        head?: never;
+        /** Read rendition headers for an active asset */
+        head: operations["HeadAssetRendition"];
         patch?: never;
         trace?: never;
     };
@@ -1300,11 +1302,74 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    HeadAssetContent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogId: string;
+                assetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
             };
         };
     };
     GetRendition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogId: string;
+                assetId: string;
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    HeadAssetRendition: {
         parameters: {
             query?: never;
             header?: never;
