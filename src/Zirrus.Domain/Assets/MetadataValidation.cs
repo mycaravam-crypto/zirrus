@@ -58,11 +58,7 @@ public static class MetadataValidation
         MetadataFieldType.Boolean => value.ValueKind is JsonValueKind.True or JsonValueKind.False,
         MetadataFieldType.Date => value.ValueKind == JsonValueKind.String
             && (DateOnly.TryParseExact(value.GetString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _)
-                || (value.TryGetDateTimeOffset(out _) && HasExplicitOffset(value.GetString()!))),
+                || (value.TryGetDateTime(out var timestamp) && timestamp.Kind != DateTimeKind.Unspecified)),
         _ => false,
     };
-
-    private static bool HasExplicitOffset(string text) =>
-        text.Contains('T', StringComparison.Ordinal)
-        && (text.EndsWith('Z') || text.LastIndexOf('+') > 10 || text.LastIndexOf('-') > 10);
 }
