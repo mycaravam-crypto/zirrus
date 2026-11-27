@@ -7,7 +7,7 @@
   soak:   Q2. Uploads N roughly 5 MiB JPEGs per minute for M minutes and requires every asset to become
           active, with no losses.
 
-A small pool of noisy JPEGs is generated with ImageMagick (`convert`, preinstalled on GitHub runners);
+A small pool of noisy JPEGs is generated with ImageMagick (`convert`; the workflows install it);
 each upload appends unique bytes after the end-of-image marker, which decoders ignore, so every upload
 is a distinct file. The database is checked through `docker compose exec postgres psql`.
 """
