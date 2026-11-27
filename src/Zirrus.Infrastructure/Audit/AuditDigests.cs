@@ -72,6 +72,10 @@ public sealed class AuditDigests(ZirrusDbContext db, IOptions<AuditDigestOptions
             return null;
         }
 
+        // A previous run may have committed a digest but failed while exporting it.
+        // Retry missing or incomplete exports before sealing a newer range.
+        await ExportPendingAsync(cancellationToken);
+
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({SealLock})", cancellationToken);
         var previous = await db.Set<AuditDigest>().AsNoTracking().OrderByDescending(d => d.ToSeq).FirstOrDefaultAsync(cancellationToken);
@@ -194,6 +198,20 @@ public sealed class AuditDigests(ZirrusDbContext db, IOptions<AuditDigestOptions
         }
     }
 
+    private async Task ExportPendingAsync(CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(options.Value.ExportDirectory))
+        {
+            return;
+        }
+
+        var digests = await db.Set<AuditDigest>().AsNoTracking().OrderBy(d => d.ToSeq).ToListAsync(cancellationToken);
+        foreach (var digest in digests)
+        {
+            await ExportAsync(digest, cancellationToken);
+        }
+    }
+
     private async Task ExportAsync(AuditDigest digest, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(options.Value.ExportDirectory))
@@ -204,6 +222,24 @@ public sealed class AuditDigests(ZirrusDbContext db, IOptions<AuditDigestOptions
         Directory.CreateDirectory(options.Value.ExportDirectory);
         var path = Path.Combine(options.Value.ExportDirectory, $"audit-digest-{digest.ToSeq:D12}.json");
         var json = JsonSerializer.Serialize(digest, ExportJson);
-        await File.WriteAllTextAsync(path, json, cancellationToken);
+        if (File.Exists(path) && await File.ReadAllTextAsync(path, cancellationToken) == json)
+        {
+            return;
+        }
+
+        // Write to a sibling file and rename atomically: a crash must not leave a partial digest.
+        var temporaryPath = $"{path}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await File.WriteAllTextAsync(temporaryPath, json, cancellationToken);
+            File.Move(temporaryPath, path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+            {
+                File.Delete(temporaryPath);
+            }
+        }
     }
 }

@@ -199,6 +199,49 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
 /// <param name="fixture">Database.</param>
 public sealed class AuditDigestTests(PostgresFixture fixture) : IClassFixture<PostgresFixture>
 {
+    /// <summary>A committed digest whose export failed is exported on the next run without creating a duplicate.</summary>
+    [Fact]
+    public async Task Failed_digest_export_is_retried_before_sealing_new_events()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var root = Path.Combine(Path.GetTempPath(), $"zirrus-audit-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        var blockedPath = Path.Combine(root, "blocked");
+        await File.WriteAllTextAsync(blockedPath, "not a directory", cancellationToken);
+        var exportDirectory = blockedPath;
+        var options = new AuditDigestOptions
+        {
+            DigestKey = Convert.ToBase64String(Enumerable.Range(0, 32).Select(i => (byte)i).ToArray()),
+            ExportDirectory = exportDirectory,
+            SafetyLag = TimeSpan.FromMinutes(5),
+        };
+        await using var context = fixture.CreateContext();
+        var digests = new AuditDigests(
+            context,
+            Options.Create(options),
+            new AuditTests.FixedTime(DateTimeOffset.UtcNow.AddHours(1)));
+
+        try
+        {
+            var eventId = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-30));
+            await Assert.ThrowsAsync<IOException>(() => digests.SealAsync(cancellationToken));
+
+            options.ExportDirectory = Path.Combine(root, "exports");
+            await digests.SealAsync(cancellationToken);
+
+            await using var db = fixture.CreateContext();
+            var sequence = await db.Set<AuditEvent>().Where(e => e.Id == eventId).Select(e => e.Seq).SingleAsync(cancellationToken);
+            var saved = await db.Set<AuditDigest>().SingleAsync(d => d.FromSeq <= sequence && d.ToSeq >= sequence, cancellationToken);
+            var exportPath = Path.Combine(options.ExportDirectory, $"audit-digest-{saved.ToSeq:D12}.json");
+            Assert.True(File.Exists(exportPath));
+            Assert.Contains(saved.Sha256, await File.ReadAllTextAsync(exportPath, cancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     /// <summary>Q10: signed digests verify, and a changed or removed sealed record is detected.</summary>
     [Fact]
     public async Task Digests_verify_and_detect_tampering_and_purges()
