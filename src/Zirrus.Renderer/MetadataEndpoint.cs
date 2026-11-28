@@ -5,7 +5,7 @@ using Zirrus.Domain.Assets;
 namespace Zirrus.Renderer;
 
 /// <summary>Isolated metadata extraction endpoint.</summary>
-public static class MetadataEndpoint
+internal static class MetadataEndpoint
 {
     /// <summary>Argument that starts a one-file metadata extraction child.</summary>
     public const string ExtractMetadataArgument = "--extract-metadata";
@@ -16,7 +16,7 @@ public static class MetadataEndpoint
     /// <param name="slots">Shared parser concurrency limit.</param>
     /// <param name="cancellationToken">Cancels the request and child process.</param>
     /// <returns>Extracted metadata, or a problem response for rejected input.</returns>
-    public static async Task<IResult> HandleAsync(HttpContext http, SubprocessRenderer parser, SemaphoreSlim slots, CancellationToken cancellationToken)
+    internal static async Task<IResult> HandleAsync(HttpContext http, SubprocessRenderer parser, SemaphoreSlim slots, CancellationToken cancellationToken)
     {
         if (http.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
         {
