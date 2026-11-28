@@ -310,14 +310,19 @@ internal sealed class EmbeddedMetadataReader
                 IgnoreProcessingInstructions = true,
             });
             var document = XDocument.Load(reader, LoadOptions.None);
-            var description = document.Descendants(Rdf + "Description").FirstOrDefault();
-            if (description is null) return;
-            Set("title", Property(description, Dc + "title"));
-            Set("creator", Property(description, Dc + "creator"));
-            Set("copyright", Property(description, Dc + "rights"));
-            Set("capture_date", Property(description, Xmp + "CreateDate"));
-            Set("credit", Property(description, Photoshop + "Credit"));
-            var subject = PropertyValues(description, Dc + "subject");
+            var descriptions = document.Descendants(Rdf + "Description").Take(16).ToArray();
+            if (descriptions.Length == 0) return;
+            foreach (var description in descriptions)
+            {
+                Set("title", Property(description, Dc + "title"));
+                Set("creator", Property(description, Dc + "creator"));
+                Set("copyright", Property(description, Dc + "rights"));
+                Set("capture_date", Property(description, Xmp + "CreateDate"));
+                Set("credit", Property(description, Photoshop + "Credit"));
+            }
+
+            var subject = descriptions.SelectMany(description => PropertyValues(description, Dc + "subject"))
+                .Distinct(StringComparer.Ordinal).Take(128).ToList();
             if (subject.Count > 0) Set("keywords", new JsonArray(subject.Select(value => (JsonNode?)JsonValue.Create(value)).ToArray()));
         }
         catch (XmlException)
