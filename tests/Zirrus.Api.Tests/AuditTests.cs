@@ -186,7 +186,6 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
             "DROP TABLE audit_events",
             "CREATE SCHEMA audit_probe",
             "ALTER TABLE audit_events ADD COLUMN privilege_probe text",
-            "GRANT SELECT ON audit_events TO PUBLIC",
             "CREATE ROLE zirrus_audit_probe NOLOGIN",
             "ALTER SCHEMA public OWNER TO zirrus_app",
         })
@@ -203,6 +202,10 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
 
             Assert.Fail($"The application role unexpectedly executed: {sql}");
         }
+
+        // A non-owner GRANT only raises a "no privileges were granted" warning, so assert its effect.
+        await Execute(app, "GRANT SELECT ON audit_events TO PUBLIC");
+        Assert.False(await Scalar<bool>(app, "SELECT has_table_privilege('public', 'audit_events', 'SELECT')"));
     }
 
     /// <summary>Authenticated 403 and resource-hiding 404 responses are audited without request payloads.</summary>
