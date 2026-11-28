@@ -31,26 +31,26 @@ internal sealed class EmbeddedMetadataReader
 
         var bytes = buffer.ToArray();
         try
-        {
-        if (bytes.AsSpan().StartsWith([0xff, 0xd8]))
-        {
-            ReadJpeg(bytes);
-        }
-        else if (bytes.AsSpan().StartsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
-        {
-            ReadPng(bytes);
-        }
-        else if (bytes.Length >= 12 && bytes.AsSpan(0, 4).SequenceEqual("RIFF"u8) && bytes.AsSpan(8, 4).SequenceEqual("WEBP"u8))
-        {
-            ReadWebP(bytes);
-        }
-        else
-        {
-            throw new UnsupportedImageException("unsupported metadata container");
-        }
+            {
+            if (bytes.AsSpan().StartsWith([0xff, 0xd8]))
+            {
+                ReadJpeg(bytes);
+            }
+            else if (bytes.AsSpan().StartsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+            {
+                ReadPng(bytes);
+            }
+            else if (bytes.Length >= 12 && bytes.AsSpan(0, 4).SequenceEqual("RIFF"u8) && bytes.AsSpan(8, 4).SequenceEqual("WEBP"u8))
+            {
+                ReadWebP(bytes);
+            }
+            else
+            {
+                throw new UnsupportedImageException("unsupported metadata container");
+            }
 
-        return _values.Count == 0 ? null : AssetMetadata.Parse(new JsonObject(_values).ToJsonString());
-        }
+            return _values.Count == 0 ? null : AssetMetadata.Parse(new JsonObject(_values).ToJsonString());
+            }
         catch (UnsupportedImageException)
         {
             throw;
