@@ -1,2 +1,3 @@
-# Accepted ZAP baseline alerts (W8 #28). Columns, tab-separated: plugin ID, owner, expiry (YYYY-MM-DD), reason.
-# Only Medium or High alerts need an entry; after the expiry the alert fails the gate again.
+# Accepted ZAP baseline alerts (W8 #28). Columns, tab-separated: plugin ID, exact alert name, owner, expiry
+# (YYYY-MM-DD), reason. Only Medium or High alerts need an entry; after the expiry the alert fails the gate again.
+10055	CSP: style-src unsafe-inline	mycaravam-crypto	2027-01-31	Mantine injects style elements at runtime; scripts stay 'self' only. Revisit with nonce-based styles.

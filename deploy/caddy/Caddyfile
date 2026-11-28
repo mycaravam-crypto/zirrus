@@ -17,6 +17,9 @@
 		# styles only. Logout posts a form to /logout, which redirects to the identity provider, so
 		# form-action must allow its origin: set ZIRRUS_IDP_ORIGIN (default https: allows any HTTPS IdP).
 		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' {$ZIRRUS_IDP_ORIGIN:https:}"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		Cross-Origin-Opener-Policy same-origin
+		Cross-Origin-Resource-Policy same-origin
 	}
 
 	# API and the browser-facing sign-in routes (OIDC login, callbacks and logout).

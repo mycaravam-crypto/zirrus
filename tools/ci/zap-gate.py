@@ -3,10 +3,10 @@
 
   python3 -I tools/ci/zap-gate.py <zap-report.json> tools/ci/zap-accepted.tsv
 
-Fails when the report contains a Medium or High alert whose plugin ID is not in the accepted list.
-Low and informational alerts are printed but do not fail. Each accepted entry has a plugin ID, an owner,
-an expiry date (YYYY-MM-DD) after which it fails again, and a reason, tab-separated; lines starting with
-# are comments.
+Fails when the report contains a Medium or High alert that is not accepted. Low and informational
+alerts are printed but do not fail. Each accepted entry has a plugin ID, the exact alert name (one plugin
+reports several distinct problems, for example every CSP weakness under 10055), an owner, an expiry date
+(YYYY-MM-DD) after which it fails again, and a reason, tab-separated; lines starting with # are comments.
 """
 import datetime
 import json
@@ -20,8 +20,8 @@ accepted = {}
 for line in open(accepted_path, encoding="utf-8"):
     if not line.strip() or line.startswith("#"):
         continue
-    plugin, owner, expires, reason = line.rstrip("\n").split("\t", 3)
-    accepted[plugin] = (owner, datetime.date.fromisoformat(expires), reason)
+    plugin, name, owner, expires, reason = line.rstrip("\n").split("\t", 4)
+    accepted[(plugin, name)] = (owner, datetime.date.fromisoformat(expires), reason)
 
 alerts = [a for site in json.load(open(report_path, encoding="utf-8")).get("site", []) for a in site.get("alerts", [])]
 blocking = []
@@ -29,7 +29,7 @@ for alert in sorted(alerts, key=lambda a: -int(a["riskcode"])):
     plugin, risk = alert["pluginid"], int(alert["riskcode"])
     status = "info"
     if risk >= 2:
-        entry = accepted.get(plugin)
+        entry = accepted.get((plugin, alert["name"]))
         if entry and entry[1] >= today:
             status = f"accepted until {entry[1]} ({entry[0]})"
         else:
