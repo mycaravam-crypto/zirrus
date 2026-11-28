@@ -63,7 +63,7 @@ internal sealed class EmbeddedMetadataReader
             if (marker is 0xd9 or 0xda) break;
             if (marker is 0x01 or >= 0xd0 and <= 0xd7) continue;
             if (offset + 2 > data.Length) break;
-            var length = BinaryPrimitives.ReadUInt16BigEndian(data.Slice(offset, 2));
+            var length = (int)BinaryPrimitives.ReadUInt16BigEndian(data.Slice(offset, 2));
             if (length < 2 || offset + length > data.Length) break;
             var segment = data.Slice(offset + 2, length - 2);
             if (marker == 0xe1)
@@ -276,7 +276,7 @@ internal sealed class EmbeddedMetadataReader
                 var bytes = length & 0x7fff;
                 if (bytes is 0 or > 4 || offset + bytes > data.Length) break;
                 length = 0;
-                for (var i = 0; i < bytes; i++) length = (ushort)((length << 8) | data[offset++]);
+                for (var i = 0; i < bytes; i++) length = checked((length << 8) | data[offset++]);
             }
 
             if (offset + length > data.Length) break;
