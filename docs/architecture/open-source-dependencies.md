@@ -63,9 +63,9 @@ Upstream evidence (not a pinned-release audit):
 - NetVips: https://github.com/kleisauke/net-vips ; libvips: https://www.libvips.org/
 - SkiaSharp: https://github.com/mono/SkiaSharp
 - Magick.NET: https://github.com/dlemstra/Magick.NET
-- MetadataExtractor: https://github.com/drewnoakes/metadata-extractor-dotnet
+- MetadataExtractor (historical spike comparison only; rejected in #20): https://github.com/drewnoakes/metadata-extractor-dotnet
 - k6: https://github.com/grafana/k6 ; Gatling: https://github.com/gatling/gatling
 - SeaweedFS: https://github.com/seaweedfs/seaweedfs
 - Commercial terms: https://massient.com/ and https://docs.automapper.io/en/latest/License-configuration.html
 
-At dependency introduction, record pinned version, SPDX expression, license text URL, scope (runtime/build/test), transitive/native SBOM and reviewer. Native NuGet packages (`NetVips.Native`, `SkiaSharp.NativeAssets.Linux`, `Magick.Native`) must list their bundled libraries in the SBOM; NuGet license metadata alone does not show them, so CI checks this (#11). Reject unknown or unapproved terms; do not pin obsolete vulnerable versions merely to retain a former license. Review license changes on upgrades. No candidate has been installed or benchmarked in this PR.
+At dependency introduction, record pinned version, SPDX expression, license text URL, scope (runtime/build/test), transitive/native SBOM and reviewer. Native NuGet packages (`NetVips.Native`, `SkiaSharp.NativeAssets.Linux`, `Magick.Native`) must list their bundled libraries in the SBOM; NuGet license metadata alone does not show them, so CI checks this (#11). Reject unknown or unapproved terms; do not pin obsolete vulnerable versions merely to retain a former license. Review license changes on upgrades. No third-party metadata package is introduced; the first-party parser still requires validation against a representative camera/agency corpus before release.
