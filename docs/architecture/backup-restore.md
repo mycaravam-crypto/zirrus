@@ -57,6 +57,7 @@ Migrations run in the one-off `migrate` container before the API and worker star
 
 ## Evidence and limits
 - **CI:** the compose job backs up the stack after the end-to-end journeys, destroys every volume, restores, and checks checksums, counts, the application role's audit restrictions and that the stack serves again. It proves the tooling on a small dataset, not the RTO.
+- **Q9 in CI:** the same job then takes a pre-upgrade backup, simulates a migration that failed half-way (a renamed column and an unknown history row, applied as the owner), recovers by restoring that backup, and runs `tools/ci/recovery-check.py`: the administrator downloads every active original and each SHA-256 matches the asset record and the manifest; a user without a grant sees no catalogs and gets 404. A real failing migration is not injected, because the migration bundle is built into the release image.
 - **Release gate:** a timed restore drill on a clean, isolated reference host with the reference dataset, recording duration, data-loss window, 100 % checksum verification and authorization checks (#50 acceptance criteria).
 - **Downtime:** the API is unavailable while the backup runs; online backups (filesystem snapshots or continuous WAL archiving) are not implemented.
 - **S3 storage:** the scripts back up the filesystem store. With the S3 adapter, back up the bucket with the provider's versioning or replication and keep the manifest to verify it.
