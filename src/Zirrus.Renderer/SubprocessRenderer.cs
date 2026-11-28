@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text.Json;
 using Zirrus.Application.Ingestion;
 using Zirrus.Infrastructure.Ingestion;
+using Zirrus.Domain.Assets;
 
 namespace Zirrus.Renderer;
 
@@ -96,9 +97,69 @@ public sealed class SubprocessRenderer(ParserLimits limits, string? childAssembl
         }
     }
 
+    public async Task<AssetMetadata?> ExtractMetadataAsync(Stream source, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var workDir = Directory.CreateTempSubdirectory("zirrus-metadata-");
+        try
+        {
+            using var child = Process.Start(StartMetadataInfo(workDir.FullName))
+                ?? throw new InvalidOperationException("metadata parser process did not start");
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(limits.Timeout);
+            var stdout = child.StandardOutput.ReadToEndAsync(timeout.Token);
+            var stderr = child.StandardError.ReadToEndAsync(timeout.Token);
+            var watchdog = WatchMemoryAsync(child, timeout);
+            try
+            {
+                await using (var stdin = child.StandardInput.BaseStream)
+                {
+                    await source.CopyToAsync(stdin, timeout.Token);
+                }
+                await child.WaitForExitAsync(timeout.Token);
+            }
+            catch (Exception e) when (e is OperationCanceledException or IOException)
+            {
+                Kill(child);
+                cancellationToken.ThrowIfCancellationRequested();
+                var reason = await watchdog ?? (e is IOException ? null : $"time limit of {limits.Timeout.TotalSeconds:0} s exceeded");
+                return reason is not null ? throw new UnsupportedImageException($"metadata parser {reason}")
+                    : throw new InvalidOperationException("metadata parser closed its input early", e);
+            }
+
+            var output = await stdout;
+            var errors = await stderr;
+            await timeout.CancelAsync();
+            if (await watchdog is { } exceeded) throw new UnsupportedImageException($"metadata parser {exceeded}");
+            if (child.ExitCode == RejectedExitCode) throw new UnsupportedImageException($"metadata: {Truncate(errors)}");
+            if (child.ExitCode != 0) throw new InvalidOperationException($"metadata parser exited with code {child.ExitCode}: {Truncate(errors)}");
+            return output.Trim() == "null" ? null : AssetMetadata.Parse(output);
+        }
+        finally
+        {
+            workDir.Delete(recursive: true);
+        }
+    }
+
+    private ProcessStartInfo StartMetadataInfo(string workDir)
+    {
+        var (fileName, prefix) = SelfCommand();
+        var info = CreateStartInfo(fileName, prefix, workDir);
+        info.ArgumentList.Add(MetadataEndpoint.ExtractMetadataArgument);
+        return info;
+    }
+
     private ProcessStartInfo StartInfo(IReadOnlyList<RenditionSpec> specs, string workDir)
     {
         var (fileName, prefix) = SelfCommand();
+        var info = CreateStartInfo(fileName, prefix, workDir);
+        info.ArgumentList.Add(RenderEndpoint.RenderOneArgument);
+        info.ArgumentList.Add(JsonSerializer.Serialize(specs, RenderProtocol.Json));
+        return info;
+    }
+
+    private ProcessStartInfo CreateStartInfo(string fileName, string[] prefix, string workDir)
+    {
         var info = new ProcessStartInfo(fileName)
         {
             RedirectStandardInput = true,
@@ -111,9 +172,6 @@ public sealed class SubprocessRenderer(ParserLimits limits, string? childAssembl
         {
             info.ArgumentList.Add(arg);
         }
-
-        info.ArgumentList.Add(RenderEndpoint.RenderOneArgument);
-        info.ArgumentList.Add(JsonSerializer.Serialize(specs, RenderProtocol.Json));
 
         // No inherited configuration, secrets or proxy settings: only what the runtime needs.
         info.Environment.Clear();
