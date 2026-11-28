@@ -239,7 +239,7 @@ internal sealed class EmbeddedMetadataReader
                     var value = ReadAscii(type, count, valueOffset, inline);
                     if (tag == 1) latRef = value; else lonRef = value;
                 }
-                else if (tag is 2 or 4 && type == 5 && count == 3)
+                else if ((tag == 2 || tag == 4) && type == 5 && count == 3)
                 {
                     var p = checked((int)valueOffset);
                     if (p + 24 > tiff.Length) return;
