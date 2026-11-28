@@ -355,7 +355,7 @@ internal sealed class EmbeddedMetadataReader
         var values = property.Descendants(Rdf + "li").Select(e => e.Value.Trim()).Where(v => v.Length > 0).Select(v => v.Length > 128 ? v[..128] : v).Distinct(StringComparer.Ordinal).Take(64).ToList();
         if (values.Count > 0) return values;
         var text = property.Value.Trim();
-        return text.Length > 0 ? [text] : [];
+        return text.Length > 128 ? [text[..128]] : text.Length > 0 ? [text] : [];
     }
 
     private void Set(string key, string? value)
