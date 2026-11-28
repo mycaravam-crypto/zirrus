@@ -110,9 +110,17 @@ public static class DependencyInjection
                 client.BaseAddress = new Uri(renderer.Url);
                 client.Timeout = renderer.Timeout;
             });
+            services.AddHttpClient<IMetadataExtractor, HttpMetadataExtractor>(client =>
+            {
+                client.BaseAddress = new Uri(renderer.Url);
+                client.Timeout = renderer.Timeout;
+            });
         }
 
-        services.AddSingleton<IMetadataExtractor, NoMetadataExtractor>(); // MetadataExtractor awaits the XmpCore review (#20)
+        if (string.IsNullOrWhiteSpace(renderer.Url))
+        {
+            services.AddSingleton<IMetadataExtractor, NoMetadataExtractor>(); // Development and tests only; production requires the isolated renderer.
+        }
         services.AddScoped<IngestionPipeline>();
         return services;
     }
