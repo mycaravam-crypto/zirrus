@@ -24,6 +24,8 @@ builder.Services.Configure<ReconciliationSettings>(builder.Configuration.GetSect
 builder.Services.AddHostedService<ReconciliationService>();
 builder.Services.Configure<AuditDigestSettings>(builder.Configuration.GetSection("Audit"));
 builder.Services.AddHostedService<AuditDigestService>();
+builder.Services.Configure<AssetPurgeSettings>(builder.Configuration.GetSection("Retention"));
+builder.Services.AddHostedService<AssetPurgeService>();
 
 var app = builder.Build();
 app.MapZirrusHealthChecks();

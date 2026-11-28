@@ -34,7 +34,14 @@ Managed filesystem is proposed as the cheapest single-host baseline, behind an S
 - **States:** uploading, quarantined, processing, active, rejected, failed, deleting, deleted. Only active assets are served; failed/rejected are never trusted.
 - **Duplicates:** checksum detection within an authorized catalog, reported without leaking other catalogs; separate records are kept when allowed.
 
-Reconciliation verifies missing blobs, orphan temp files, pending transitions and expired leases, and reports before any destructive cleanup. Soft deletion immediately denies access; physical purge follows after a proposed 30 days, subject to the retention decision, and is audited separately. Future versions reference immutable binary keys. Validate filesystem and S3-compatible round trips with SHA-256, partial writes, retries and range behavior; no PoC yet.
+Reconciliation verifies missing blobs, orphan temp files, pending transitions and expired leases, and reports before any destructive cleanup. Soft deletion immediately denies access; physical purge follows after the retention period and is audited separately (see Deletion and purge below). Future versions reference immutable binary keys. Validate filesystem and S3-compatible round trips with SHA-256, partial writes, retries and range behavior; no PoC yet.
+
+### Deletion and purge
+- **Soft delete:** an editor's delete moves the asset to `deleting`. Every read route (details, content with Range and HEAD, renditions, search results and counts, category lists) treats it as not found at once, and writes to it return 404. Blobs are kept.
+- **Downloads in progress:** a response that started before the soft delete may finish, because blobs are only removed by the purge. Any new request, including the next Range request of a resumed download, gets 404.
+- **Retention:** `Retention:SoftDeletedAssets` (for example `Retention__SoftDeletedAssets=30.00:00:00`) sets how long soft-deleted assets are kept. It has no default: 30 days is a proposal until the retention policy is approved, and while it is unset the worker logs that the purge is disabled and removes nothing.
+- **Purge:** the worker runs hourly (`Retention:PurgeInterval`) and handles at most `Retention:PurgeBatchSize` assets (default 100), oldest first. For each asset soft-deleted before the cutoff it deletes the rendition blobs and the original (a missing blob counts as deleted), then in one transaction re-checks the asset under a row lock, removes rendition rows and category links, marks it `deleted` and records `asset.purge` (actor `system:retention`). The row stays for audit.
+- **Failures:** if a blob cannot be deleted, the asset stays `deleting`, still unreachable, and is retried at the next run; the worker logs a warning per asset. A crash between blob deletion and the database update is repaired the same way. Reconciliation no longer reports `deleting` assets as stale.
 
 ## Search
 - **Indexes:** PostgreSQL FTS with GIN tsvector, pg_trgm for optional typo tolerance, B-tree on catalog/state/updated_at, and selected JSONB expression indexes.
