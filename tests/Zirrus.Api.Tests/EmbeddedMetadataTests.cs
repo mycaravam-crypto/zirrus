@@ -61,6 +61,73 @@ public sealed class EmbeddedMetadataTests
         return await parser.ExtractMetadataAsync(new MemoryStream(content, writable: false), CancellationToken.None);
     }
 
+
+    private static byte[] JpegWithExifGps()
+    {
+        var tiff = new byte[128];
+        tiff[0] = (byte)'I';
+        tiff[1] = (byte)'I';
+        BinaryPrimitives.WriteUInt16LittleEndian(tiff.AsSpan(2), 42);
+        BinaryPrimitives.WriteUInt32LittleEndian(tiff.AsSpan(4), 8);
+        BinaryPrimitives.WriteUInt16LittleEndian(tiff.AsSpan(8), 1);
+        BinaryPrimitives.WriteUInt16LittleEndian(tiff.AsSpan(10), 0x8825);
+        BinaryPrimitives.WriteUInt16LittleEndian(tiff.AsSpan(12), 4);
+        BinaryPrimitives.WriteUInt32LittleEndian(tiff.AsSpan(14), 1);
+        BinaryPrimitives.WriteUInt32LittleEndian(tiff.AsSpan(18), 26);
+        BinaryPrimitives.WriteUInt16LittleEndian(tiff.AsSpan(26), 4);
+        WriteGpsEntry(tiff, 28, 1, 2, 2, 0x004e);
+        WriteGpsEntry(tiff, 40, 2, 5, 3, 80);
+        WriteGpsEntry(tiff, 52, 3, 2, 2, 0x0045);
+        WriteGpsEntry(tiff, 64, 4, 5, 3, 104);
+        BinaryPrimitives.WriteUInt32LittleEndian(tiff.AsSpan(76), 0);
+        WriteRational(tiff, 80, 54, 1);
+        WriteRational(tiff, 88, 30, 1);
+        WriteRational(tiff, 96, 0, 1);
+        WriteRational(tiff, 104, 10, 1);
+        WriteRational(tiff, 112, 0, 1);
+        WriteRational(tiff, 120, 0, 1);
+        return JpegWithSegment(0xe1, Encoding.ASCII.GetBytes("Exif\\0\\0").Concat(tiff).ToArray());
+    }
+
+    private static void WriteGpsEntry(byte[] tiff, int offset, ushort tag, ushort type, uint count, uint value)
+    {
+        BinaryPrimitives.WriteUInt16LittleEndian(tiff.AsSpan(offset), tag);
+        BinaryPrimitives.WriteUInt16LittleEndian(tiff.AsSpan(offset + 2), type);
+        BinaryPrimitives.WriteUInt32LittleEndian(tiff.AsSpan(offset + 4), count);
+        BinaryPrimitives.WriteUInt32LittleEndian(tiff.AsSpan(offset + 8), value);
+    }
+
+    private static void WriteRational(byte[] tiff, int offset, uint numerator, uint denominator)
+    {
+        BinaryPrimitives.WriteUInt32LittleEndian(tiff.AsSpan(offset), numerator);
+        BinaryPrimitives.WriteUInt32LittleEndian(tiff.AsSpan(offset + 4), denominator);
+    }
+
+    private static byte[] IptcRecord(byte dataset, string value)
+    {
+        var text = Encoding.Latin1.GetBytes(value);
+        return [0x1c, 0x02, dataset, (byte)(text.Length >> 8), (byte)text.Length, .. text];
+    }
+
+    private static IEnumerable<byte> Int32BigEndian(int value)
+    {
+        Span<byte> bytes = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32BigEndian(bytes, value);
+        return bytes.ToArray();
+    }
+
+    private static byte[] JpegWithSegment(byte marker, byte[] payload)
+    {
+        using var output = new MemoryStream();
+        output.Write([0xff, 0xd8, 0xff, marker]);
+        Span<byte> length = stackalloc byte[2];
+        BinaryPrimitives.WriteUInt16BigEndian(length, checked((ushort)(payload.Length + 2)));
+        output.Write(length);
+        output.Write(payload);
+        output.Write([0xff, 0xd9]);
+        return output.ToArray();
+    }
+
     private static byte[] JpegWithXmp(string xml)
     {
         var prefix = Encoding.ASCII.GetBytes("http://ns.adobe.com/xap/1.0/\0");
