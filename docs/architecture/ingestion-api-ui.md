@@ -4,7 +4,7 @@ Issues #7, #8. Proposed.
 ## Pipeline
 1. **Upload:** stream the authenticated upload into quarantine, validate declared size and detected magic bytes, generate an opaque asset ID, calculate SHA-256 and write job intent in the same transaction.
 2. **Scan:** ClamAV, fail-closed. Infected or unsupported files are rejected; an unavailable scanner leaves the asset quarantined for retry.
-3. **Extract:** EXIF/IPTC/XMP after the scan with MetadataExtractor (parity with ExifTool in the [spike](spike-results.md#3-metadata-7)); map its `ImageProcessingException` to rejection.
+3. **Extract:** EXIF/IPTC/XMP after the scan with the first-party bounded reader in the isolated renderer. It uses .NET binary/XML APIs, rejects malformed metadata, prohibits DTDs and external XML resolution, and runs in a fresh child process under the existing time and memory limits. Supported fields: title, creator, keywords, copyright, capture date, GPS and XMP credit. This is an MVP subset, not full XMP specification support.
 4. **Render:** SkiaSharp with scaled JPEG decoding (77 MiB peak on a 50 MP JPEG in the [spike](spike-results.md#2-rendering-adr-0003-7)); NetVips if extended formats are added. The selected renderer creates a JPEG/WebP thumbnail (320 px longest edge) and preview (1600 px), with no upscaling.
 
 Initial formats are JPEG, PNG and WebP. Proposed limits: 100 MiB per file and 50 megapixels decoded. Malformed and unsupported files are rejected and the original is preserved.

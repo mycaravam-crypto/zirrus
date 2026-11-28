@@ -197,8 +197,8 @@ public interface IImageRenderer
 }
 
 /// <summary>
-/// Embedded-metadata port (EXIF/IPTC/XMP). The MVP default extracts nothing until the
-/// MetadataExtractor dependency clears its license review (#20).
+/// Embedded-metadata port (EXIF/IPTC/XMP). Production uses the isolated renderer's bounded
+/// first-party reader; the no-op implementation is reserved for tests and local development.
 /// </summary>
 public interface IMetadataExtractor
 {
@@ -210,7 +210,7 @@ public interface IMetadataExtractor
     Task<AssetMetadata?> ExtractAsync(Stream source, CancellationToken cancellationToken);
 }
 
-/// <summary>Extracts nothing; used until #20 approves MetadataExtractor.</summary>
+/// <summary>No-op implementation for tests and local development without the renderer service.</summary>
 public sealed class NoMetadataExtractor : IMetadataExtractor
 {
     /// <inheritdoc />

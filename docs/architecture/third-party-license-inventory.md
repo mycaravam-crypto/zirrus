@@ -12,7 +12,7 @@ Status: preliminary, not a release SBOM. Verify exact package versions, transiti
 | Wolverine, Rebus (queue candidates) | MIT (verify exact packages) | Not used initially; in-house Npgsql consumer behind `IJobQueue` (ADR 0002) |
 | Mapperly / FluentValidation | Apache-2.0 | Optional; prefer direct mapping and built-in validation |
 | Shouldly / NSubstitute | BSD-3-Clause (verify) | Optional test-only |
-| MetadataExtractor / XmpCore 6.1.10.1 | Apache-2.0 / **no SPDX expression**; license URL points to Adobe XMP library terms | Metadata candidate; ExifTool fallback for missing fields |
+| Embedded metadata reader | First-party .NET code; uses .NET runtime XML and binary APIs | No additional package; runs only in the isolated renderer child process. MetadataExtractor/XmpCore rejected in #20 |
 | AWS SDK for .NET (S3 client) | Apache-2.0 | S3 adapter client |
 | SeaweedFS | Apache-2.0 (verify) | Preferred S3-compatible test server |
 | MinIO | AGPL-3.0 (verify current distribution terms) | Test-tool exception only, never production by default |
