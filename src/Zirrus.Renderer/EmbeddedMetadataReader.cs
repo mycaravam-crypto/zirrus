@@ -1,8 +1,6 @@
 using System.Buffers.Binary;
-using System.Globalization;
 using System.IO.Compression;
 using System.Text;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Xml;
 using System.Xml.Linq;
@@ -189,7 +187,7 @@ internal sealed class EmbeddedMetadataReader
                 var items = U32(entry + 4);
                 var size = type switch { 1 or 2 or 6 or 7 => 1, 3 or 8 => 2, 4 or 9 or 11 => 4, 5 or 10 or 12 => 8, _ => 0 };
                 var byteCount = (long)items * size;
-                var value = byteCount <= 4 ? U32(entry + 8) : U32(entry + 8);
+                var value = U32(entry + 8);
                 var inline = entry + 8;
                 if (byteCount > 4 && (value > tiff.Length || value + byteCount > tiff.Length)) continue;
                 visit(U16(entry), type, items, value, inline);
