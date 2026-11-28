@@ -14,7 +14,7 @@ Prefer first-party .NET APIs and maintained permissive OSS. No mandatory paid li
 | Assertions | xUnit built-in assertions; Shouldly optional | Apache-2.0 / BSD-3-Clause | FluentAssertions v8+ |
 | Mocking | Hand-written fakes; NSubstitute if needed | Project Apache-2.0 / BSD-3-Clause | Unnecessary mocking packages |
 | Image rendering | SkiaSharp for JPEG/PNG/WebP (spike recommendation); NetVips if TIFF/HEIC/RAW are added | MIT + bundled BSD/MIT/Apache (GIF decoder MPL-1.1 elected) / MIT wrapper + LGPL-3.0-or-later native bundle | ImageSharp split-license default |
-| Metadata | MetadataExtractor (parity with ExifTool in the spike); ExifTool only if real files show gaps | Apache-2.0; XmpCore terms under review / Perl terms | Proprietary SDK |
+| Metadata | First-party bounded EXIF/IPTC/XMP reader behind `IMetadataExtractor`, using .NET APIs in the isolated renderer | .NET runtime libraries; no additional package | MetadataExtractor/XmpCore (rejected #20); ExifTool unless separately reviewed |
 | Identity | ASP.NET Core OIDC + Keycloak | MIT / Apache-2.0 | Mandatory paid identity server |
 | Load testing | k6 (test-tool exception); Gatling OSS if a permissive tool is required | AGPL-3.0 / Apache-2.0 | NBomber commercial editions |
 | S3-compatible test server | SeaweedFS; MinIO only as test-tool exception | Apache-2.0 / AGPL-3.0 | Production S3 server chosen by default |
