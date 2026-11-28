@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using System.Xml;
 using System.Xml.Linq;
+using Zirrus.Application.Ingestion;
 using Zirrus.Domain.Assets;
 
 namespace Zirrus.Renderer;
@@ -38,11 +39,11 @@ internal sealed class EmbeddedMetadataReader
         var bytes = buffer.ToArray();
         try
             {
-            if (bytes.AsSpan().StartsWith([0xff, 0xd8]))
+            if (bytes.Length >= 2 && bytes[0] == 0xff && bytes[1] == 0xd8)
             {
                 ReadJpeg(bytes);
             }
-            else if (bytes.AsSpan().StartsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+            else if (bytes.Length >= 8 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4e && bytes[3] == 0x47 && bytes[4] == 0x0d && bytes[5] == 0x0a && bytes[6] == 0x1a && bytes[7] == 0x0a)
             {
                 ReadPng(bytes);
             }
@@ -83,7 +84,7 @@ internal sealed class EmbeddedMetadataReader
             var segment = data.Slice(offset + 2, length - 2);
             if (marker == 0xe1)
             {
-                if (segment.StartsWith("Exif\0\0"u8)) ReadTiff(segment[6..]);
+                if (segment.StartsWith("Exif\0\0"u8)) ReadTiff(segment[6..].ToArray());
                 else if (segment.StartsWith("http://ns.adobe.com/xap/1.0/\0"u8)) ReadXmp(segment[29..]);
             }
             else if (marker == 0xed && segment.StartsWith("Photoshop 3.0\0"u8))
@@ -104,7 +105,7 @@ internal sealed class EmbeddedMetadataReader
             if (length > MaxInputBytes || offset + 12L + length > data.Length) break;
             var type = data.Slice(offset + 4, 4);
             var chunk = data.Slice(offset + 8, (int)length);
-            if (type.SequenceEqual("eXIf"u8)) ReadTiff(chunk);
+            if (type.SequenceEqual("eXIf"u8)) ReadTiff(chunk.ToArray());
             else if (type.SequenceEqual("iTXt"u8)) ReadPngText(chunk);
             offset += checked((int)length + 12);
             if (type.SequenceEqual("IEND"u8)) break;
@@ -159,7 +160,7 @@ internal sealed class EmbeddedMetadataReader
             var chunk = data.Slice(offset + 8, (int)size);
             if (data.Slice(offset, 4).SequenceEqual("EXIF"u8))
             {
-                ReadTiff(chunk.StartsWith("Exif\0\0"u8) ? chunk[6..] : chunk);
+                ReadTiff((chunk.StartsWith("Exif\0\0"u8) ? chunk[6..] : chunk).ToArray());
             }
             else if (data.Slice(offset, 4).SequenceEqual("XMP "u8))
             {
@@ -170,13 +171,13 @@ internal sealed class EmbeddedMetadataReader
         }
     }
 
-    private void ReadTiff(ReadOnlySpan<byte> tiff)
+    private void ReadTiff(byte[] tiff)
     {
         if (tiff.Length < 8) return;
         var little = tiff[..2].SequenceEqual("II"u8);
         if (!little && !tiff[..2].SequenceEqual("MM"u8)) return;
-        ushort U16(int p) => p < 0 || p + 2 > tiff.Length ? (ushort)0 : little ? BinaryPrimitives.ReadUInt16LittleEndian(tiff[p..]) : BinaryPrimitives.ReadUInt16BigEndian(tiff[p..]);
-        uint U32(int p) => p < 0 || p + 4 > tiff.Length ? 0 : little ? BinaryPrimitives.ReadUInt32LittleEndian(tiff[p..]) : BinaryPrimitives.ReadUInt32BigEndian(tiff[p..]);
+        ushort U16(int p) => p < 0 || p + 2 > tiff.Length ? (ushort)0 : little ? BinaryPrimitives.ReadUInt16LittleEndian(tiff.AsSpan(p)) : BinaryPrimitives.ReadUInt16BigEndian(tiff.AsSpan(p));
+        uint U32(int p) => p < 0 || p + 4 > tiff.Length ? 0 : little ? BinaryPrimitives.ReadUInt32LittleEndian(tiff.AsSpan(p)) : BinaryPrimitives.ReadUInt32BigEndian(tiff.AsSpan(p));
         if (U16(2) != 42) return;
         var ifd0 = checked((int)U32(4));
         var exif = 0;
@@ -224,7 +225,7 @@ internal sealed class EmbeddedMetadataReader
             if (type != 2 || count == 0 || count > 4096) return null;
             var start = count <= 4 ? inline : checked((int)valueOffset);
             if (start < 0 || start + count > tiff.Length) return null;
-            return Encoding.ASCII.GetString(tiff.Slice(start, (int)count)).TrimEnd('\0', ' ');
+            return Encoding.ASCII.GetString(tiff.AsSpan(start, (int)count)).TrimEnd('\0', ' ');
         }
 
         void ReadGps(int start)
@@ -292,7 +293,7 @@ internal sealed class EmbeddedMetadataReader
             if (data[offset++] != 0x1c) break;
             var record = data[offset++];
             var dataset = data[offset++];
-            var length = BinaryPrimitives.ReadUInt16BigEndian(data.Slice(offset, 2));
+            var length = (int)BinaryPrimitives.ReadUInt16BigEndian(data.Slice(offset, 2));
             offset += 2;
             if ((length & 0x8000) != 0)
             {
