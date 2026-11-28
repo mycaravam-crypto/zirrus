@@ -48,6 +48,9 @@ public static class AuditActions
     /// <summary>An asset was soft-deleted.</summary>
     public const string SoftDelete = "asset.soft_delete";
 
+    /// <summary>A soft-deleted asset was purged after its retention period: blobs, renditions and category links removed.</summary>
+    public const string Purge = "asset.purge";
+
     /// <summary>A catalog was created.</summary>
     public const string CatalogCreate = "catalog.create";
 

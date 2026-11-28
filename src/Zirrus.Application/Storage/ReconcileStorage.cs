@@ -67,7 +67,7 @@ public sealed record Findings<T>(int Count, IReadOnlyList<T> Items);
 /// <param name="MissingBlobs">Expected blobs absent from storage.</param>
 /// <param name="SizeMismatches">Blobs whose stored size differs from the database.</param>
 /// <param name="OrphanTemporaries">Temporary writes older than the threshold.</param>
-/// <param name="StaleTransitions">Assets stuck in uploading, processing or deleting.</param>
+/// <param name="StaleTransitions">Assets stuck in uploading or processing.</param>
 /// <param name="ExpiredLeases">Running jobs with expired leases.</param>
 public sealed record ReconciliationReport(
     DateTimeOffset StartedAt,

@@ -73,6 +73,8 @@ public static class DependencyInjection
         services.AddScoped<DeleteAsset>();
         services.AddScoped<IStorageInventory, StorageInventory>();
         services.AddScoped<ReconcileStorage>();
+        services.AddScoped<IAssetPurgeStore, AssetPurgeStore>();
+        services.AddScoped<PurgeDeletedAssets>();
         services.AddScoped<IIngestionStore, IngestionStore>();
         services.AddScoped<UploadAsset>();
         services.AddScoped<RetryAsset>();

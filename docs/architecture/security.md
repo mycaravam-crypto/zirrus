@@ -30,7 +30,7 @@ All ungranted catalogs are denied except for the organization administrator. Tes
 
 ## Audit and retention
 - **Events:** ID, actor, action, resource, outcome, UTC timestamp, correlation ID, and short non-secret detail (for example a granted role).
-- **Recorded actions** (`AuditActions`): sign-in and sign-out; upload, metadata change, retry and soft delete of assets; catalog creation; role grant and revoke; schema creation; category creation, assignment and removal; authenticated API access denied with 403 or resource-hiding 404.
+- **Recorded actions** (`AuditActions`): sign-in and sign-out; upload, metadata change, retry, soft delete and retention purge of assets; catalog creation; role grant and revoke; schema creation; category creation, assignment and removal; authenticated API access denied with 403 or resource-hiding 404.
   - Each entry is staged in the request's unit of work and committed **in the same transaction** as the change, so a rejected or rolled-back change leaves no entry and a committed change always has one.
   - Authenticated API requests ending in 403 or 404 are recorded independently after the response. The event contains the actor, route template, method, catalog/resource IDs when available, outcome and correlation ID; it never stores request bodies, query values or raw resource paths. Anonymous 401 responses are not attributed to a user and are not recorded.
 - **Integrity** (implemented, AuditHardening migration):
@@ -48,7 +48,7 @@ All ungranted catalogs are denied except for the organization administrator. Tes
   - a fully expired digest range is purged as a unit, while a range containing any unexpired event remains intact and verifiable;
   - authenticated 403 and resource-hiding 404 responses are audited without request payloads.
 - **Content:** no secrets, raw tokens or unnecessary personal data. Protect logs and define incident access.
-- **Retention:** proposed 180 days for audit and 30 days for soft-deleted originals; not yet approved. Confirm policy and legal basis; document deletion requests.
+- **Retention:** proposed 180 days for audit and 30 days for soft-deleted originals; not yet approved. The asset purge (`asset.purge`) runs only once `Retention:SoftDeletedAssets` is set ([data-storage-search.md](data-storage-search.md#deletion-and-purge)). Confirm policy and legal basis; document deletion requests.
 - **Operations:** key handling and rotation, digest export, retention runs, failure behavior, incident response and the trust boundary are in [audit-operations.md](audit-operations.md).
 
 Baseline controls: TLS, secrets outside source, patching and SBOM; no public storage endpoints.

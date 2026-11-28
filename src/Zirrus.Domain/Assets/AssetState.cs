@@ -54,7 +54,11 @@ public static class AssetLifecycle
     public static IReadOnlyList<AssetState> StatesWithOriginal { get; } =
         [AssetState.Quarantined, AssetState.Processing, AssetState.Active, AssetState.Rejected, AssetState.Failed];
 
-    /// <summary>Transitional states that should not last long; older rows are reported as stale.</summary>
+    /// <summary>
+    /// Transitional states that should not last long; older rows are reported as stale. Soft-deleted
+    /// (<see cref="AssetState.Deleting"/>) assets are excluded: they stay for the retention period and the
+    /// purge job reports the ones it cannot remove.
+    /// </summary>
     public static IReadOnlyList<AssetState> TransitionalStates { get; } =
-        [AssetState.Uploading, AssetState.Processing, AssetState.Deleting];
+        [AssetState.Uploading, AssetState.Processing];
 }

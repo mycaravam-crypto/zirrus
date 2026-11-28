@@ -92,6 +92,8 @@ services:
       Renderer__Url: http://renderer:8080
       # Signed audit digests (Q10) are also written here; back this volume up off-host (deployment-delivery.md).
       Audit__ExportDirectory: /var/lib/zirrus/audit
+      # Soft-deleted asset purge (#49): unset until the retention policy is approved, so nothing is purged.
+      # Retention__SoftDeletedAssets: "30.00:00:00"
     volumes:
       - blobs:/var/lib/zirrus/blobs
       - audit_digests:/var/lib/zirrus/audit
