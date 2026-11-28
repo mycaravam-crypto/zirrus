@@ -37,3 +37,4 @@ services:
   web:
     environment:
       ZIRRUS_SITE_ADDRESS: http://localhost
+      ZIRRUS_IDP_ORIGIN: http://keycloak:8180

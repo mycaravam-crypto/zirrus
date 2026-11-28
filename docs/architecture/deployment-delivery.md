@@ -8,7 +8,7 @@ Docker Engine + Compose v2 on Linux, with Caddy as the only ingress (80/443) and
 - **Persistent data:** PostgreSQL (including the job queue), the asset store volume (originals, quarantine, renditions), ClamAV signatures, identity data and Caddy certificates. Document volume ownership and backup coverage.
 - **Profiles:** dev/test/prod; no default credentials in production.
 - **Images:** base images pinned by version and digest, updated through Dependabot (the Keycloak image in the test override is pinned by version only); multi-stage builds on minimal .NET and Node base images; non-root where supported.
-- **Hardening:** read-only root FS, dropped capabilities, no-new-privileges, resource limits. The parser sandbox has no network; the worker orchestrator keeps the service network.
+- **Hardening:** read-only root FS, dropped capabilities, no-new-privileges, resource limits. Caddy sends a Content Security Policy (own scripts only; inline styles allowed for Mantine; `form-action` limited to the site and `ZIRRUS_IDP_ORIGIN`), `X-Frame-Options DENY`, `nosniff` and `no-referrer`. The parser sandbox has no network; the worker orchestrator keeps the service network.
 
 Observability: Compose healthchecks backed by ASP.NET Core health checks; readiness depends on the database and required services, worker liveness is separate. Structured redacted logs, queue age/failure, API latency/error metrics, disk alerts and OpenTelemetry traces.
 
@@ -47,6 +47,7 @@ Short-lived branches; each PR references its issues; conventional commits; CODEO
   - coverage gate #12;
   - NuGet/npm dependency and license scan and SBOM;
   - container image scan: Trivy (Apache-2.0, run as a pinned CI container, not shipped) on every image in `deploy/compose.yaml`, failing on fixable HIGH or CRITICAL findings. Accepted exceptions go in `deploy/trivyignore.yaml` with reason, owner and an expiry date, after which they fail the gate again.
+  - DAST: a passive ZAP baseline scan (2.17.0, pinned) of the public site through Caddy in the compose job, failing on Medium or High alerts unless accepted in `tools/ci/zap-accepted.tsv` with owner and expiry. The HTML and JSON reports are kept as the `zap-report` artifact. An authenticated active scan stays a release-candidate task.
 - **Release candidate:** E2E critical paths, accessibility and security tests, with report artifacts.
 - **Pipeline security:** least-privilege CI permissions, no secrets in untrusted PR jobs, protected release publishing.
 - **Releases:** SemVer, immutable image tags and digests, OCI labels, signed release artifacts where supported.

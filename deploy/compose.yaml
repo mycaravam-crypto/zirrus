@@ -139,6 +139,8 @@ services:
     <<: *hardening
     environment:
       ZIRRUS_SITE_ADDRESS: ${ZIRRUS_SITE_ADDRESS:-http://localhost}
+      # Origin of the OIDC provider, allowed as a form-action target for the logout redirect (Caddyfile CSP).
+      ZIRRUS_IDP_ORIGIN: ${ZIRRUS_IDP_ORIGIN:-https:}
     # Non-root Caddy may bind 80/443 inside its own network namespace only.
     sysctls:
       net.ipv4.ip_unprivileged_port_start: 80
