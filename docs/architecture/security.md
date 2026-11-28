@@ -48,7 +48,8 @@ All ungranted catalogs are denied except for the organization administrator. Tes
   - a fully expired digest range is purged as a unit, while a range containing any unexpired event remains intact and verifiable;
   - authenticated 403 and resource-hiding 404 responses are audited without request payloads.
 - **Content:** no secrets, raw tokens or unnecessary personal data. Protect logs and define incident access.
-- **Retention:** proposed 180 days for audit and 30 days for soft-deleted originals. Confirm policy and legal basis; document deletion requests and backup expiry.
+- **Retention:** proposed 180 days for audit and 30 days for soft-deleted originals; not yet approved. Confirm policy and legal basis; document deletion requests.
+- **Operations:** key handling and rotation, digest export, retention runs, failure behavior, incident response and the trust boundary are in [audit-operations.md](audit-operations.md).
 
 Baseline controls: TLS, secrets outside source, patching and SBOM; no public storage endpoints.
 
