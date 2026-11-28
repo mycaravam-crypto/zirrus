@@ -284,7 +284,7 @@ internal sealed class EmbeddedMetadataReader
             switch (dataset)
             {
                 case 5: Set("title", value); break;
-                case 25: keywords.Add(value); break;
+                case 25 when keywords.Count < 128: keywords.Add(value.Length > 256 ? value[..256] : value); break;
                 case 55: Set("capture_date", value); break;
                 case 80: Set("creator", value); break;
                 case 116: Set("copyright", value); break;
@@ -305,7 +305,7 @@ internal sealed class EmbeddedMetadataReader
                 DtdProcessing = DtdProcessing.Prohibit,
                 XmlResolver = null,
                 MaxCharactersInDocument = MaxXmpBytes,
-                MaxCharactersFromEntities = 0,
+                MaxCharactersFromEntities = MaxXmpBytes,
                 IgnoreComments = true,
                 IgnoreProcessingInstructions = true,
             });
@@ -347,7 +347,7 @@ internal sealed class EmbeddedMetadataReader
     {
         var property = description.Element(name);
         if (property is null) return [];
-        var values = property.Descendants(Rdf + "li").Select(e => e.Value.Trim()).Where(v => v.Length > 0).Distinct(StringComparer.Ordinal).Take(256).ToList();
+        var values = property.Descendants(Rdf + "li").Select(e => e.Value.Trim()).Where(v => v.Length > 0).Select(v => v.Length > 256 ? v[..256] : v).Distinct(StringComparer.Ordinal).Take(128).ToList();
         if (values.Count > 0) return values;
         var text = property.Value.Trim();
         return text.Length > 0 ? [text] : [];
@@ -355,7 +355,7 @@ internal sealed class EmbeddedMetadataReader
 
     private void Set(string key, string? value)
     {
-        if (!string.IsNullOrWhiteSpace(value)) _values[key] = JsonValue.Create(value.Trim());
+        if (!string.IsNullOrWhiteSpace(value)) _values[key] = JsonValue.Create(value.Trim().Length > 4096 ? value.Trim()[..4096] : value.Trim());
     }
 
     private void Set(string key, double value) => _values[key] = JsonValue.Create(value);
