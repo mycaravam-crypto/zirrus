@@ -77,7 +77,7 @@ public sealed class EmbeddedMetadataTests
             IptcRecord(80, "Alex Example"),
             IptcRecord(116, "Agency 2026"),
         }.SelectMany(value => value).ToArray();
-        var photoshop = Encoding.ASCII.GetBytes("Photoshop 3.0\\0")
+        var photoshop = Encoding.ASCII.GetBytes("Photoshop 3.0\0")
             .Concat(Encoding.ASCII.GetBytes("8BIM"))
             .Concat(new byte[] { 0x04, 0x04, 0x00, 0x00 })
             .Concat(Int32BigEndian(records.Length))
@@ -117,7 +117,7 @@ public sealed class EmbeddedMetadataTests
     {
         using var output = new MemoryStream();
         output.Write([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-        var text = Encoding.UTF8.GetBytes("XML:com.adobe.xmp\\0\\0\\0\\0\\0").Concat(Encoding.UTF8.GetBytes(xml)).ToArray();
+        var text = Encoding.UTF8.GetBytes("XML:com.adobe.xmp\0\0\0\0\0").Concat(Encoding.UTF8.GetBytes(xml)).ToArray();
         WritePngChunk(output, "iTXt", text);
         WritePngChunk(output, "IEND", []);
         return output.ToArray();
@@ -174,7 +174,7 @@ public sealed class EmbeddedMetadataTests
         WriteRational(tiff, 104, 10, 1);
         WriteRational(tiff, 112, 0, 1);
         WriteRational(tiff, 120, 0, 1);
-        return JpegWithSegment(0xe1, Encoding.ASCII.GetBytes("Exif\\0\\0").Concat(tiff).ToArray());
+        return JpegWithSegment(0xe1, Encoding.ASCII.GetBytes("Exif\0\0").Concat(tiff).ToArray());
     }
 
     private static void WriteGpsEntry(byte[] tiff, int offset, ushort tag, ushort type, uint count, uint value)
