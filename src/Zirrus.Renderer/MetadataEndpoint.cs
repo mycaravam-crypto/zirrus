@@ -11,13 +11,14 @@ public static class MetadataEndpoint
     public const string ExtractMetadataArgument = "--extract-metadata";
 
     /// <summary>Extracts embedded metadata in a fresh, resource-limited parser process.</summary>
-    public static async Task<IResult> HandleAsync(HttpContext http, SubprocessRenderer parser, CancellationToken cancellationToken)
+    public static async Task<IResult> HandleAsync(HttpContext http, SubprocessRenderer parser, SemaphoreSlim slots, CancellationToken cancellationToken)
     {
         if (http.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
         {
             limit.MaxRequestBodySize = MediaFormat.MaxUploadBytes;
         }
 
+        await slots.WaitAsync(cancellationToken);
         try
         {
             var metadata = await parser.ExtractMetadataAsync(http.Request.Body, cancellationToken);
@@ -26,6 +27,10 @@ public static class MetadataEndpoint
         catch (UnsupportedImageException e)
         {
             return Results.Problem(statusCode: StatusCodes.Status422UnprocessableEntity, title: e.Message);
+        }
+        finally
+        {
+            slots.Release();
         }
     }
 }
