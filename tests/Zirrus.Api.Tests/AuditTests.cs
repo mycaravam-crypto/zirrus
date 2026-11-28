@@ -121,8 +121,11 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
     [Fact]
     public async Task Audit_records_are_append_only_for_the_owner_and_only_the_purge_deletes()
     {
+        await SealEventsAsync();
         var old = await InsertEventAsync(DateTimeOffset.UtcNow.AddDays(-400));
+        await SealEventsAsync();
         var recent = await InsertEventAsync(DateTimeOffset.UtcNow);
+        await SealEventsAsync();
         await using var owner = new NpgsqlConnection(fixture.ConnectionString);
         await owner.OpenAsync(Api.Ct);
         foreach (var sql in new[]
@@ -159,6 +162,11 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
         var appConnection = new NpgsqlConnectionStringBuilder(fixture.ConnectionString) { Username = "zirrus_app", Password = AppPassword }.ConnectionString;
         await using var app = new NpgsqlConnection(appConnection);
         await app.OpenAsync(Api.Ct);
+        Assert.Equal("zirrus_app", await Scalar<string>(app, "SELECT current_user"));
+        Assert.False(await Scalar<bool>(app, "SELECT rolsuper FROM pg_roles WHERE rolname = current_user"));
+        Assert.False(await Scalar<bool>(app, "SELECT pg_has_role(current_user, 'postgres', 'MEMBER')"));
+        Assert.NotEqual("zirrus_app", await Scalar<string>(app,
+            "SELECT pg_get_userbyid(relowner) FROM pg_class WHERE oid = 'audit_events'::regclass"));
 
         await Execute(app, $"""
             INSERT INTO audit_events (id, organization_id, actor, action, outcome, occurred_at, correlation_id)
@@ -176,11 +184,28 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
             "SELECT audit_purge(now())",
             "DELETE FROM \"__EFMigrationsHistory\"",
             "DROP TABLE audit_events",
+            "CREATE SCHEMA audit_probe",
+            "ALTER TABLE audit_events ADD COLUMN privilege_probe text",
+            "CREATE ROLE zirrus_audit_probe NOLOGIN",
+            "ALTER SCHEMA public OWNER TO zirrus_app",
         })
         {
-            var error = await Assert.ThrowsAsync<PostgresException>(() => Execute(app, sql));
-            Assert.Contains(error.SqlState, new[] { PostgresErrorCodes.InsufficientPrivilege, "42501" });
+            try
+            {
+                await Execute(app, sql);
+            }
+            catch (PostgresException error)
+            {
+                Assert.Contains(error.SqlState, new[] { PostgresErrorCodes.InsufficientPrivilege, "42501" });
+                continue;
+            }
+
+            Assert.Fail($"The application role unexpectedly executed: {sql}");
         }
+
+        // A non-owner GRANT only raises a "no privileges were granted" warning, so assert its effect.
+        await Execute(app, "GRANT SELECT ON audit_events TO PUBLIC");
+        Assert.False(await Scalar<bool>(app, "SELECT has_table_privilege('public', 'audit_events', 'SELECT')"));
     }
 
     /// <summary>Authenticated 403 and resource-hiding 404 responses are audited without request payloads.</summary>
@@ -215,6 +240,17 @@ public sealed class AuditTests(PostgresFixture fixture) : IClassFixture<Postgres
         Assert.Contains("method=GET", denied[1].Detail!, StringComparison.Ordinal);
         Assert.Equal((Guid?)missingAssetId, denied[1].ResourceId);
         Assert.DoesNotContain("Sensitive category name", string.Join('\n', denied.Select(e => e.Detail)));
+    }
+
+    private async Task SealEventsAsync()
+    {
+        await using var db = fixture.CreateContext();
+        var options = Options.Create(new AuditDigestOptions
+        {
+            DigestKey = Convert.ToBase64String(Enumerable.Range(0, 32).Select(i => (byte)i).ToArray()),
+        });
+        var digests = new AuditDigests(db, options, new FixedTime(DateTimeOffset.UtcNow.AddHours(1)));
+        await digests.SealAsync(Api.Ct);
     }
 
     private Task<Guid> InsertEventAsync(DateTimeOffset occurredAt) => InsertEventAsync(fixture, occurredAt);
@@ -320,7 +356,7 @@ public sealed class AuditDigestTests(PostgresFixture fixture) : IClassFixture<Po
     {
         var digests = Digests(DateTimeOffset.UtcNow.AddHours(1));
         await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddDays(-400));
-        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-30));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddDays(-401));
         var first = await digests.SealAsync(Api.Ct);
         Assert.NotNull(first);
         var target = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-20));
@@ -348,6 +384,100 @@ public sealed class AuditDigestTests(PostgresFixture fixture) : IClassFixture<Po
         // The retention purge removes the oldest events: reported as purged, not as tampering.
         await AuditTests.Execute(owner, "SELECT audit_purge(now() - interval '365 days')");
         Assert.Equal(DigestStatus.Purged, (await digests.VerifyAsync(10, Api.Ct))[0].Status);
+    }
+
+    /// <summary>An internal deletion in a sealed range is detected without relying on a leading-prefix check.</summary>
+    [Fact]
+    public async Task Digests_detect_removed_internal_events_without_purge_evidence()
+    {
+        var digests = Digests(DateTimeOffset.UtcNow.AddHours(1));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-30));
+        var removed = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-20));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-10));
+        Assert.NotNull(await digests.SealAsync(Api.Ct));
+
+        await using var owner = new NpgsqlConnection(fixture.ConnectionString);
+        await owner.OpenAsync(Api.Ct);
+        await AuditTests.Execute(owner, $"""
+            ALTER TABLE audit_events DISABLE TRIGGER audit_events_append_only;
+            DELETE FROM audit_events WHERE id = '{removed}';
+            ALTER TABLE audit_events ENABLE TRIGGER audit_events_append_only;
+            """);
+
+        Assert.Equal(DigestStatus.Mismatch, Assert.Single(await digests.VerifyAsync(1, Api.Ct)).Status);
+    }
+
+    /// <summary>Changing sequence order inside a sealed range invalidates its digest.</summary>
+    [Fact]
+    public async Task Digests_detect_reordered_events()
+    {
+        var digests = Digests(DateTimeOffset.UtcNow.AddHours(1));
+        var first = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-20));
+        var second = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-10));
+        Assert.NotNull(await digests.SealAsync(Api.Ct));
+
+        long firstSeq;
+        long secondSeq;
+        await using (var db = fixture.CreateContext())
+        {
+            firstSeq = await db.Set<AuditEvent>().Where(e => e.Id == first).Select(e => e.Seq).SingleAsync(Api.Ct);
+            secondSeq = await db.Set<AuditEvent>().Where(e => e.Id == second).Select(e => e.Seq).SingleAsync(Api.Ct);
+        }
+
+        await using var owner = new NpgsqlConnection(fixture.ConnectionString);
+        await owner.OpenAsync(Api.Ct);
+        await AuditTests.Execute(owner, $"""
+            ALTER TABLE audit_events ALTER COLUMN seq SET GENERATED BY DEFAULT;
+            ALTER TABLE audit_events DISABLE TRIGGER audit_events_append_only;
+            UPDATE audit_events SET seq = -1 WHERE id = '{first}';
+            UPDATE audit_events SET seq = {firstSeq} WHERE id = '{second}';
+            UPDATE audit_events SET seq = {secondSeq} WHERE id = '{first}';
+            ALTER TABLE audit_events ENABLE TRIGGER audit_events_append_only;
+            ALTER TABLE audit_events ALTER COLUMN seq SET GENERATED ALWAYS;
+            """);
+
+        Assert.Equal(DigestStatus.Mismatch, Assert.Single(await digests.VerifyAsync(1, Api.Ct)).Status);
+    }
+
+    /// <summary>Changing a sealed digest's range and event count cannot make a truncated range verify.</summary>
+    [Fact]
+    public async Task Digests_detect_truncated_ranges()
+    {
+        var digests = Digests(DateTimeOffset.UtcNow.AddHours(1));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-20));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-10));
+        var digest = await digests.SealAsync(Api.Ct);
+        Assert.NotNull(digest);
+
+        await using var owner = new NpgsqlConnection(fixture.ConnectionString);
+        await owner.OpenAsync(Api.Ct);
+        await AuditTests.Execute(owner, $"""
+            ALTER TABLE audit_digests DISABLE TRIGGER audit_digests_append_only;
+            UPDATE audit_digests
+            SET to_seq = from_seq, event_count = 1
+            WHERE id = '{digest.Id}';
+            ALTER TABLE audit_digests ENABLE TRIGGER audit_digests_append_only;
+            """);
+
+        Assert.Equal(DigestStatus.Mismatch, Assert.Single(await digests.VerifyAsync(1, Api.Ct)).Status);
+    }
+
+    /// <summary>Retention leaves a partially expired digest intact so every event remains verifiable.</summary>
+    [Fact]
+    public async Task Retention_does_not_partially_purge_a_digest_range()
+    {
+        var digests = Digests(DateTimeOffset.UtcNow.AddHours(1));
+        var old = await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddDays(-400));
+        await AuditTests.InsertEventAsync(fixture, DateTimeOffset.UtcNow.AddMinutes(-10));
+        Assert.NotNull(await digests.SealAsync(Api.Ct));
+
+        await using var owner = new NpgsqlConnection(fixture.ConnectionString);
+        await owner.OpenAsync(Api.Ct);
+        await AuditTests.Execute(owner, "SELECT audit_purge(now() - interval '365 days')");
+
+        await using var db = fixture.CreateContext();
+        Assert.Equal(1, await db.Set<AuditEvent>().CountAsync(e => e.Id == old, Api.Ct));
+        Assert.Equal(DigestStatus.Valid, Assert.Single(await digests.VerifyAsync(1, Api.Ct)).Status);
     }
 
     private AuditDigests Digests(DateTimeOffset now, string? key = null) =>
