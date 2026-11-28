@@ -4,6 +4,7 @@ using System.Buffers.Binary;
 using System.Text;
 using System.Text.Json;
 using Zirrus.Application.Ingestion;
+using Zirrus.Domain.Assets;
 using Renderer = renderer::Zirrus.Renderer;
 
 namespace Zirrus.Api.Tests;
@@ -39,7 +40,7 @@ public sealed class EmbeddedMetadataTests
         Assert.Equal("Copyright 2026", root.GetProperty("copyright").GetString());
         Assert.Equal("2026-11-28T10:00:00Z", root.GetProperty("capture_date").GetString());
         Assert.Equal("Agency", root.GetProperty("credit").GetString());
-        Assert.Equal(new[] { "sea", "harbour" }, root.GetProperty("keywords").EnumerateArray().Select(v => v.GetString()));
+        Assert.Equal("sea,harbour", string.Join(',', root.GetProperty("keywords").EnumerateArray().Select(v => v.GetString())));
     }
 
     [Fact]
@@ -53,7 +54,7 @@ public sealed class EmbeddedMetadataTests
         await Assert.ThrowsAsync<UnsupportedImageException>(() => ExtractAsync(JpegWithXmp("<broken")));
     }
 
-    private static async Task<Domain.Assets.AssetMetadata?> ExtractAsync(byte[] content)
+    private static async Task<AssetMetadata?> ExtractAsync(byte[] content)
     {
         var limits = new Renderer.ParserLimits { Timeout = TimeSpan.FromSeconds(10), MaxMemoryBytes = 512L * 1024 * 1024 };
         var parser = new Renderer.SubprocessRenderer(limits, typeof(Renderer.RenderEndpoint).Assembly.Location);
