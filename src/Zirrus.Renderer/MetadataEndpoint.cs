@@ -21,9 +21,7 @@ public static class MetadataEndpoint
         try
         {
             var metadata = await parser.ExtractMetadataAsync(http.Request.Body, cancellationToken);
-            return metadata is null
-                ? Results.Json(JsonDocument.Parse("null").RootElement)
-                : Results.Content(metadata.Json, "application/json");
+            return Results.Content(metadata?.Json ?? "null", "application/json");
         }
         catch (UnsupportedImageException e)
         {
