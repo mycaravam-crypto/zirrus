@@ -31,7 +31,7 @@ services:
 
   migrate:
     build: { context: .., dockerfile: deploy/docker/migrate.Dockerfile }
-    image: zirrus-migrate:local
+    image: ${ZIRRUS_IMAGE_PREFIX:-}zirrus-migrate:${ZIRRUS_VERSION:-local}
     <<: *hardening
     restart: "no"
     secrets:
@@ -60,7 +60,7 @@ services:
 
   api:
     build: { context: .., dockerfile: deploy/docker/api.Dockerfile }
-    image: zirrus-api:local
+    image: ${ZIRRUS_IMAGE_PREFIX:-}zirrus-api:${ZIRRUS_VERSION:-local}
     <<: *hardening
     environment:
       # Production: set the identity provider (ADR 0007) and supply Auth__ClientSecret as a secret.
@@ -80,7 +80,7 @@ services:
 
   worker:
     build: { context: .., dockerfile: deploy/docker/worker.Dockerfile }
-    image: zirrus-worker:local
+    image: ${ZIRRUS_IMAGE_PREFIX:-}zirrus-worker:${ZIRRUS_VERSION:-local}
     <<: *hardening
     secrets:
       - source: zirrus_app_db
@@ -109,7 +109,7 @@ services:
   # and shared with the worker, so a compromised decoder cannot touch PostgreSQL, blobs or the internet.
   renderer:
     build: { context: .., dockerfile: deploy/docker/renderer.Dockerfile }
-    image: zirrus-renderer:local
+    image: ${ZIRRUS_IMAGE_PREFIX:-}zirrus-renderer:${ZIRRUS_VERSION:-local}
     <<: *hardening
     networks: [render]
     mem_limit: 768m
@@ -135,7 +135,7 @@ services:
 
   web:
     build: { context: .., dockerfile: deploy/docker/web.Dockerfile }
-    image: zirrus-web:local
+    image: ${ZIRRUS_IMAGE_PREFIX:-}zirrus-web:${ZIRRUS_VERSION:-local}
     <<: *hardening
     environment:
       ZIRRUS_SITE_ADDRESS: ${ZIRRUS_SITE_ADDRESS:-http://localhost}

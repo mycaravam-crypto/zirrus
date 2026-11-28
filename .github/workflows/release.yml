@@ -1,0 +1,99 @@
+# Release (W8 #28): builds the five ZIRRUS images with OCI labels, runs the same Trivy gate as CI and,
+# for a SemVer tag push, publishes them to GHCR under the version tag, records their immutable digests
+# and creates a GitHub release. A manual run builds and scans a given version; it publishes only when
+# "publish" is ticked. Actions are pinned by commit SHA (ADR 0011).
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "SemVer without the leading v, for example 0.1.0-rc.1"
+        required: true
+      publish:
+        description: "Push the images and create the release (otherwise build and scan only)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write   # create the GitHub release and its tag
+      packages: write   # push images to GHCR
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - name: Version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then version="${GITHUB_REF_NAME#v}"; publish=true; else version="$INPUT_VERSION"; publish="$INPUT_PUBLISH"; fi
+          semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$'
+          [[ "$version" =~ $semver ]] || { echo "::error::'$version' is not a SemVer version"; exit 1; }
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          {
+            echo "ZIRRUS_VERSION=$version"
+            echo "ZIRRUS_IMAGE_PREFIX=ghcr.io/$owner/"
+            echo "PUBLISH=$publish"
+          } >> "$GITHUB_ENV"
+      - name: Build images with OCI labels
+        run: |
+          set -euo pipefail
+          created="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for service in api worker migrate renderer web; do
+            docker build -f "deploy/docker/$service.Dockerfile" \
+              --label "org.opencontainers.image.version=$ZIRRUS_VERSION" \
+              --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+              --label "org.opencontainers.image.created=$created" \
+              --label "org.opencontainers.image.url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+              -t "${ZIRRUS_IMAGE_PREFIX}zirrus-$service:$ZIRRUS_VERSION" .
+          done
+      - name: Image vulnerability scan (Trivy, same gate as CI)
+        run: |
+          set -euo pipefail
+          deploy/init-secrets.sh  # throwaway secrets so Compose can resolve the file; never published
+          for image in $(docker compose -f deploy/compose.yaml config --images | grep -v '^ghcr.io/' | sort -u); do docker pull -q "$image"; done
+          tools/ci/scan-images.sh
+      - name: Push images and record digests
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          : > images.txt
+          for service in api worker migrate renderer web; do
+            image="${ZIRRUS_IMAGE_PREFIX}zirrus-$service:$ZIRRUS_VERSION"
+            docker push -q "$image"
+            echo "$(docker inspect --format '{{index .RepoDigests 0}}' "$image")" >> images.txt
+          done
+          cat images.txt
+      - name: GitHub release
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          prerelease=(); [[ "$ZIRRUS_VERSION" == *-* ]] && prerelease=(--prerelease)
+          {
+            echo "## Images"
+            echo
+            echo "Deploy with \`ZIRRUS_IMAGE_PREFIX=$ZIRRUS_IMAGE_PREFIX ZIRRUS_VERSION=$ZIRRUS_VERSION\` (deployment-delivery.md). Immutable digests:"
+            echo
+            sed 's/^/- `/; s/$/`/' images.txt
+          } > notes.md
+          gh release create "v$ZIRRUS_VERSION" images.txt --target "$GITHUB_SHA" --title "ZIRRUS $ZIRRUS_VERSION" \
+            --notes-file notes.md --generate-notes "${prerelease[@]}"
