@@ -70,7 +70,7 @@ MetadataExtractor 2.9.3 returned every MVP field that ExifTool 12.76 returned: t
 - **Robustness:** the truncated JPEG was read without error. The EICAR file raised `ImageProcessingException`, which the pipeline must map to "rejected".
 - **License:** MetadataExtractor is Apache-2.0. Its dependency **XmpCore 6.1.10.1 has no SPDX expression**; its license URL points to Adobe's XMP library terms. Under ADR 0003 it is blocked until reviewed.
 
-**Recommendation:** MetadataExtractor without ExifTool in the MVP image (no Perl runtime), after the XmpCore review.
+**Disposition:** this spike recommendation was superseded by the licensing decision in #20. MetadataExtractor/XmpCore is not shipped. The MVP uses the first-party, bounded EXIF/IPTC/XMP reader behind `IMetadataExtractor`, hosted in the isolated renderer process; implementation and focused parser tests are tracked in #59. The original spike remains historical parity evidence only.
 
 ## 4. Authentication and session (ADR 0007, security.md)
 Keycloak 26.8.2 could not be downloaded: Maven Central's CDN returned HTTP 429 to this container. The ASP.NET Core 10 handlers were tested against [oidc-provider](https://github.com/panva/node-oidc-provider) 9.15.1 (MIT, OpenID Certified) with PKCE required. 14 of 14 checks passed:
