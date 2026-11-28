@@ -174,8 +174,8 @@ internal sealed class EmbeddedMetadataReader
     private void ReadTiff(byte[] tiff)
     {
         if (tiff.Length < 8) return;
-        var little = tiff[..2].SequenceEqual("II"u8);
-        if (!little && !tiff[..2].SequenceEqual("MM"u8)) return;
+        var little = tiff.AsSpan(0, 2).SequenceEqual("II"u8);
+        if (!little && !tiff.AsSpan(0, 2).SequenceEqual("MM"u8)) return;
         ushort U16(int p) => p < 0 || p + 2 > tiff.Length ? (ushort)0 : little ? BinaryPrimitives.ReadUInt16LittleEndian(tiff.AsSpan(p)) : BinaryPrimitives.ReadUInt16BigEndian(tiff.AsSpan(p));
         uint U32(int p) => p < 0 || p + 4 > tiff.Length ? 0 : little ? BinaryPrimitives.ReadUInt32LittleEndian(tiff.AsSpan(p)) : BinaryPrimitives.ReadUInt32BigEndian(tiff.AsSpan(p));
         if (U16(2) != 42) return;
