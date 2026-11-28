@@ -161,6 +161,23 @@ jobs:
           # Keycloak exists only in the test override; among ZIRRUS services only web may publish ports.
           test "$published" = "keycloak web" || { echo "::error::unexpected published ports: $published"; exit 1; }
           echo "smoke test passed"
+      - name: DAST baseline scan (ZAP, W8 #28, Q7)
+        # Passive ZAP baseline scan of the public site through Caddy, before any test data exists. Fails on
+        # Medium or High alerts unless accepted in tools/ci/zap-accepted.tsv with owner and expiry.
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/zap" && chmod 777 "$RUNNER_TEMP/zap"
+          docker run --rm --network host -v "$RUNNER_TEMP/zap:/zap/wrk:rw" \
+            ghcr.io/zaproxy/zaproxy:2.17.0@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af \
+            zap-baseline.py -t http://localhost/ -m 2 -I -J zap.json -r zap.html
+          python3 -I tools/ci/zap-gate.py "$RUNNER_TEMP/zap/zap.json" tools/ci/zap-accepted.tsv
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: zap-report
+          path: ${{ runner.temp }}/zap/
+          if-no-files-found: ignore
       - name: End-to-end sign-in (Keycloak, #19) and ingestion (worker, ClamAV, W4)
         run: |
           python3 -m pip install --quiet --user requests==2.34.2

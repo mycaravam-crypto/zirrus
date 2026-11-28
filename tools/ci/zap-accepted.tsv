@@ -1,0 +1,2 @@
+# Accepted ZAP baseline alerts (W8 #28). Columns, tab-separated: plugin ID, owner, expiry (YYYY-MM-DD), reason.
+# Only Medium or High alerts need an entry; after the expiry the alert fails the gate again.
