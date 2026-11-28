@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Caddy image serving the React SPA and proxying /api to the API (only public entry point, #10).
 # Node and Caddy are pinned to exact versions and image digests (W8, #28); Dependabot proposes updates.
-FROM node:26.13.0-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68 AS build
+FROM node:26.13.1-bookworm-slim@sha256:0042e17d232a87a2cd485be1da7900fca4d10a4ad11b29e9285da1d2e54798c9 AS build
 WORKDIR /src
 # Node 25+ no longer bundles Corepack; install a pinned copy (MIT), then pnpm comes from package.json.
 RUN npm install --global corepack@0.36.0 && corepack enable
