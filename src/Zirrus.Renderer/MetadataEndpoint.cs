@@ -11,6 +11,11 @@ public static class MetadataEndpoint
     public const string ExtractMetadataArgument = "--extract-metadata";
 
     /// <summary>Extracts embedded metadata in a fresh, resource-limited parser process.</summary>
+    /// <param name="http">HTTP request.</param>
+    /// <param name="parser">Isolated parser process host.</param>
+    /// <param name="slots">Shared parser concurrency limit.</param>
+    /// <param name="cancellationToken">Cancels the request and child process.</param>
+    /// <returns>Extracted metadata, or a problem response for rejected input.</returns>
     public static async Task<IResult> HandleAsync(HttpContext http, SubprocessRenderer parser, SemaphoreSlim slots, CancellationToken cancellationToken)
     {
         if (http.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
