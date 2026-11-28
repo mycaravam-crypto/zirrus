@@ -84,8 +84,8 @@ public static class DependencyInjection
 
     /// <summary>
     /// Adds the ingestion pipeline for the worker: the PostgreSQL job queue, ClamAV scanner
-    /// (<c>Scanner</c> section), the renderer (the isolated service at <c>Renderer:Url</c>, or
-    /// in-process SkiaSharp when no URL is set) and the metadata extractor.
+    /// (<c>Scanner</c> section), the renderer and metadata extractor. Production uses the isolated
+    /// renderer at <c>Renderer:Url</c>; in-process rendering and no-op metadata are for tests/development.
     /// </summary>
     /// <param name="services">Service collection.</param>
     /// <param name="configuration">Application configuration.</param>
