@@ -44,6 +44,19 @@ public sealed class EmbeddedMetadataTests
     }
 
     [Fact]
+    public async Task Reads_xmp_from_png_and_webp_containers()
+    {
+        const string xmp = "<x:xmpmeta xmlns:x=\"adobe:ns:meta/\"><rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"><rdf:Description xmlns:dc=\"http://purl.org/dc/elements/1.1/\" dc:title=\"Container title\" /></rdf:RDF></x:xmpmeta>";
+        foreach (var image in new[] { PngWithXmp(xmp), WebPWithXmp(xmp) })
+        {
+            var metadata = await ExtractAsync(image);
+            Assert.NotNull(metadata);
+            using var document = JsonDocument.Parse(metadata.Json);
+            Assert.Equal("Container title", document.RootElement.GetProperty("title").GetString());
+        }
+    }
+
+    [Fact]
     public async Task Reads_exif_gps_coordinates()
     {
         var metadata = await ExtractAsync(JpegWithExifGps());
@@ -99,6 +112,43 @@ public sealed class EmbeddedMetadataTests
         return await parser.ExtractMetadataAsync(new MemoryStream(content, writable: false), CancellationToken.None);
     }
 
+
+    private static byte[] PngWithXmp(string xml)
+    {
+        using var output = new MemoryStream();
+        output.Write([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+        var text = Encoding.UTF8.GetBytes("XML:com.adobe.xmp\\0\\0\\0\\0\\0").Concat(Encoding.UTF8.GetBytes(xml)).ToArray();
+        WritePngChunk(output, "iTXt", text);
+        WritePngChunk(output, "IEND", []);
+        return output.ToArray();
+    }
+
+    private static void WritePngChunk(Stream output, string type, byte[] payload)
+    {
+        Span<byte> length = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32BigEndian(length, payload.Length);
+        output.Write(length);
+        output.Write(Encoding.ASCII.GetBytes(type));
+        output.Write(payload);
+        output.Write(new byte[4]);
+    }
+
+    private static byte[] WebPWithXmp(string xml)
+    {
+        var payload = Encoding.UTF8.GetBytes(xml);
+        using var output = new MemoryStream();
+        output.Write(Encoding.ASCII.GetBytes("RIFF"));
+        Span<byte> size = stackalloc byte[4];
+        BinaryPrimitives.WriteUInt32LittleEndian(size, (uint)(4 + 8 + payload.Length + (payload.Length & 1)));
+        output.Write(size);
+        output.Write(Encoding.ASCII.GetBytes("WEBP"));
+        output.Write(Encoding.ASCII.GetBytes("XMP "));
+        BinaryPrimitives.WriteUInt32LittleEndian(size, (uint)payload.Length);
+        output.Write(size);
+        output.Write(payload);
+        if ((payload.Length & 1) != 0) output.WriteByte(0);
+        return output.ToArray();
+    }
 
     private static byte[] JpegWithExifGps()
     {
