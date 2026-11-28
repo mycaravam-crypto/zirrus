@@ -23,10 +23,16 @@ internal sealed class EmbeddedMetadataReader
     {
         ArgumentNullException.ThrowIfNull(source);
         using var buffer = new MemoryStream();
-        await source.CopyToAsync(buffer, cancellationToken);
-        if (buffer.Length > MaxInputBytes)
+        var readBuffer = new byte[81920];
+        int bytesRead;
+        while ((bytesRead = await source.ReadAsync(readBuffer, cancellationToken)) > 0)
         {
-            throw new UnsupportedImageException("metadata input exceeds 100 MiB");
+            if (buffer.Length + bytesRead > MaxInputBytes)
+            {
+                throw new UnsupportedImageException("metadata input exceeds 100 MiB");
+            }
+
+            await buffer.WriteAsync(readBuffer.AsMemory(0, bytesRead), cancellationToken);
         }
 
         var bytes = buffer.ToArray();
@@ -55,7 +61,7 @@ internal sealed class EmbeddedMetadataReader
         {
             throw;
         }
-        catch (Exception e) when (e is OverflowException or ArgumentOutOfRangeException or IndexOutOfRangeException or InvalidDataException)
+        catch (Exception e) when (e is OverflowException or IndexOutOfRangeException or InvalidDataException or ArgumentException)
         {
             throw new UnsupportedImageException("malformed embedded metadata", e);
         }
@@ -111,8 +117,10 @@ internal sealed class EmbeddedMetadataReader
         if (keywordEnd < 0 || Encoding.Latin1.GetString(data[..keywordEnd]) != "XML:com.adobe.xmp") return;
         var index = keywordEnd + 1;
         if (index + 2 > data.Length) return;
-        var compressed = data[index++] == 1;
-        index++;
+        var compressionFlag = data[index++];
+        var compressionMethod = data[index++];
+        if (compressionFlag > 1 || compressionMethod != 0) return;
+        var compressed = compressionFlag == 1;
         var languageEnd = data[index..].IndexOf((byte)0);
         if (languageEnd < 0) return;
         index += languageEnd + 1;
@@ -125,8 +133,14 @@ internal sealed class EmbeddedMetadataReader
             using var input = new MemoryStream(text.ToArray());
             using var zlib = new ZLibStream(input, CompressionMode.Decompress);
             using var output = new MemoryStream();
-            zlib.CopyTo(output);
-            if (output.Length > MaxXmpBytes) return;
+            var buffer = new byte[8192];
+            int read;
+            while ((read = zlib.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                if (output.Length + read > MaxXmpBytes) return;
+                output.Write(buffer, 0, read);
+            }
+
             ReadXmp(output.ToArray());
         }
         else
