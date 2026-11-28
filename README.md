@@ -43,7 +43,7 @@ open http://localhost                                     # SPA; /api/v1/catalog
 
 For demo data, start with the Keycloak test realm (`-f deploy/compose.yaml -f deploy/compose.test.yaml`, map `keycloak` to 127.0.0.1 as in CI) and run `python3 tools/demo-seed.py`: two catalogs, a metadata schema, categories and 24 images; sign in as `alice` / `ci-test-only-alice`.
 
-Set `ZIRRUS_SITE_ADDRESS` to a domain name for automatic HTTPS. For local development, start only the database with `docker compose -f deploy/compose.yaml -f deploy/compose.dev.yaml up -d postgres migrate`. Then run the API with `ConnectionStrings__Zirrus='Host=localhost;Database=zirrus;Username=zirrus;Password=<deploy/secrets/postgres_password>' dotnet run --project src/Zirrus.Api` and the web app with `pnpm --filter @zirrus/web dev`.
+Set `ZIRRUS_SITE_ADDRESS` to a domain name for automatic HTTPS. Set `ZIRRUS_IDP_ORIGIN` to your OIDC provider's origin (for example `https://id.example.org`) so the Content Security Policy allows only that logout redirect target; the default `https:` allows any HTTPS provider. For local development, start only the database with `docker compose -f deploy/compose.yaml -f deploy/compose.dev.yaml up -d postgres migrate`. Then run the API with `ConnectionStrings__Zirrus='Host=localhost;Database=zirrus;Username=zirrus;Password=<deploy/secrets/postgres_password>' dotnet run --project src/Zirrus.Api` and the web app with `pnpm --filter @zirrus/web dev`.
 
 ## Sign-in configuration (W2)
 - **Identity provider:** set `ZIRRUS_OIDC_AUTHORITY` (e.g. `https://id.example.org/realms/zirrus`) and provide the client secret as the Docker secret or setting `Auth__ClientSecret`. Without an authority, `/login` answers 503.
