@@ -1,0 +1,121 @@
+# Accepted Trivy findings for the image scan gate in CI (W8, #28). Each entry names the affected image,
+# why it is accepted, the owner and an expiry: after expired_at the finding fails the gate again.
+# Only findings with no fixed upstream image may be listed; first reviewed 2026-11-28.
+vulnerabilities:
+  # postgres:18 (newest digest as of 2026-11-28). zstd information disclosure; fixed in Debian, not yet in the image.
+  - id: CVE-2026-124851
+    statement: "postgres:18 base layer, no rebuilt image yet. Owner: mycaravam-crypto. Bump postgres when available."
+    expired_at: 2027-01-31
+
+  # postgres:18: gosu is built with an old Go toolchain. It runs only in the entrypoint to drop root
+  # and opens no network connections, so the TLS, x509 and net findings are not reachable.
+  - id: CVE-2025-61726
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2025-61729
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2025-68121
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-111943
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-25679
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-27145
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-32280
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-32281
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-32283
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-33811
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-33814
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-33818
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-39820
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-39821
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-39822
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-39836
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-42499
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-42504
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-56853
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-56858
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-56859
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-56860
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-56862
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-78667
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-78669
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  - id: CVE-2026-97031
+    paths: ["usr/local/bin/gosu"]
+    statement: "gosu in postgres:18, entrypoint privilege drop only, no network use. Owner: mycaravam-crypto."
+    expired_at: 2027-01-31
+  # caddy:2.11.9-alpine (newest release as of 2026-11-28): x/net/html in the Caddy binary. The Caddyfile serves
+  # static files and proxies /api; it enables no HTML templates or other HTML parsing of untrusted input.
+  - id: CVE-2026-78661
+    paths: ["usr/bin/caddy"]
+    statement: "Caddy 2.11.9 binary, HTML parser not used by the ZIRRUS Caddyfile. Owner: mycaravam-crypto. Bump Caddy when released."
+    expired_at: 2027-01-31

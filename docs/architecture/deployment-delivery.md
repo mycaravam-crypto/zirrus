@@ -44,7 +44,7 @@ Short-lived branches; each PR references its issues; conventional commits; CODEO
   - OpenAPI contract diff and regeneration check for the TS client;
   - coverage gate #12;
   - NuGet/npm dependency and license scan and SBOM;
-  - container image scan: Trivy (Apache-2.0, run as a pinned CI container, not shipped) on every image in `deploy/compose.yaml`, failing on fixable HIGH or CRITICAL findings. Accepted exceptions go in `deploy/trivyignore` with reason, owner and review date.
+  - container image scan: Trivy (Apache-2.0, run as a pinned CI container, not shipped) on every image in `deploy/compose.yaml`, failing on fixable HIGH or CRITICAL findings. Accepted exceptions go in `deploy/trivyignore.yaml` with reason, owner and an expiry date, after which they fail the gate again.
 - **Release candidate:** E2E critical paths, accessibility and security tests, with report artifacts.
 - **Pipeline security:** least-privilege CI permissions, no secrets in untrusted PR jobs, protected release publishing.
 - **Releases:** SemVer, immutable image tags and digests, OCI labels, signed release artifacts where supported.
