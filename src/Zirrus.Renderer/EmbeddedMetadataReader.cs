@@ -30,6 +30,8 @@ internal sealed class EmbeddedMetadataReader
         }
 
         var bytes = buffer.ToArray();
+        try
+        {
         if (bytes.AsSpan().StartsWith([0xff, 0xd8]))
         {
             ReadJpeg(bytes);
@@ -48,6 +50,15 @@ internal sealed class EmbeddedMetadataReader
         }
 
         return _values.Count == 0 ? null : AssetMetadata.Parse(new JsonObject(_values).ToJsonString());
+        }
+        catch (UnsupportedImageException)
+        {
+            throw;
+        }
+        catch (Exception e) when (e is OverflowException or ArgumentOutOfRangeException or IndexOutOfRangeException or InvalidDataException)
+        {
+            throw new UnsupportedImageException("malformed embedded metadata", e);
+        }
     }
 
     private void ReadJpeg(ReadOnlySpan<byte> data)
