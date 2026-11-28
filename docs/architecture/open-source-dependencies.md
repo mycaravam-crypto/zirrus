@@ -42,7 +42,7 @@ Compare **NetVips** (MIT wrapper; the native package declares LGPL-3.0-or-later)
 
 Measure on identical data: peak RSS on a 50 MP JPEG, thumbnails per minute, startup, EXIF orientation, PNG/WebP output, and corrupt, oversize and EICAR inputs. Record each candidate's native library list.
 
-Evaluate MetadataExtractor for read-only EXIF/IPTC/XMP. Its XMP support depends on XmpCore; include it in the license review. Define the MVP field set (title, creator, keywords, copyright, capture date, GPS) and compare coverage with ExifTool on the corpus. Use ExifTool only for missing fields. Run extraction inside the time- and memory-limited parser process; managed code avoids memory corruption, not DoS. No metadata write-back to originals in MVP.
+The MVP uses a first-party reader for the bounded EXIF, IPTC-IIM and XMP subset, implemented with .NET binary/XML APIs behind `IMetadataExtractor`. It extracts title, creator, keywords, copyright, capture date, GPS and XMP credit. XMP parsing prohibits DTDs and external resolution and caps document size; the entire extraction runs in a fresh time- and memory-limited renderer child process. This is not full XMP specification compliance. MetadataExtractor/XmpCore was rejected in #20; ExifTool is not used as a fallback without a separate license review. No metadata is written back to originals.
 
 ClamAV remains a GPL component requiring separate distribution review; do not replace malware scanning with file extension checks.
 
