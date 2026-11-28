@@ -97,6 +97,12 @@ public sealed class SubprocessRenderer(ParserLimits limits, string? childAssembl
         }
     }
 
+    /// <summary>Extracts embedded metadata in a fresh child process under the parser limits.</summary>
+    /// <param name="source">Original image stream.</param>
+    /// <param name="cancellationToken">Cancels extraction and kills the child.</param>
+    /// <returns>Extracted metadata, or null when no supported fields are present.</returns>
+    /// <exception cref="UnsupportedImageException">Metadata is malformed or parser limits are exceeded.</exception>
+    /// <exception cref="InvalidOperationException">The child process crashed.</exception>
     public async Task<AssetMetadata?> ExtractMetadataAsync(Stream source, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -123,8 +129,12 @@ public sealed class SubprocessRenderer(ParserLimits limits, string? childAssembl
                 Kill(child);
                 cancellationToken.ThrowIfCancellationRequested();
                 var reason = await watchdog ?? (e is IOException ? null : $"time limit of {limits.Timeout.TotalSeconds:0} s exceeded");
-                return reason is not null ? throw new UnsupportedImageException($"metadata parser {reason}")
-                    : throw new InvalidOperationException("metadata parser closed its input early", e);
+                if (reason is not null)
+                {
+                    throw new UnsupportedImageException($"metadata parser {reason}");
+                }
+
+                throw new InvalidOperationException("metadata parser closed its input early", e);
             }
 
             var output = await stdout;
