@@ -233,8 +233,8 @@ internal sealed class EmbeddedMetadataReader
                     if (tag == 2) lat = coordinate; else lon = coordinate;
                 }
             });
-            if (lat is { } latitude && latRef == "S") latitude = -latitude;
-            if (lon is { } longitude && lonRef == "W") longitude = -longitude;
+            if (lat is { } latitude && latRef == "S") lat = -latitude;
+            if (lon is { } longitude && lonRef == "W") lon = -longitude;
             if (lat is { } finalLat) Set("gps_latitude", finalLat);
             if (lon is { } finalLon) Set("gps_longitude", finalLon);
         }
@@ -293,7 +293,7 @@ internal sealed class EmbeddedMetadataReader
             }
         }
 
-        if (keywords.Count > 0) Set("keywords", new JsonArray(keywords.Select(JsonValue.Create).ToArray()));
+        if (keywords.Count > 0) Set("keywords", new JsonArray(keywords.Select(value => (JsonNode?)JsonValue.Create(value)).ToArray()));
     }
 
     private void ReadXmp(ReadOnlySpan<byte> data)
@@ -320,7 +320,7 @@ internal sealed class EmbeddedMetadataReader
             Set("capture_date", Property(description, Xmp + "CreateDate"));
             Set("credit", Property(description, Photoshop + "Credit"));
             var subject = PropertyValues(description, Dc + "subject");
-            if (subject.Count > 0) Set("keywords", new JsonArray(subject.Select(JsonValue.Create).ToArray()));
+            if (subject.Count > 0) Set("keywords", new JsonArray(subject.Select(value => (JsonNode?)JsonValue.Create(value)).ToArray()));
         }
         catch (XmlException)
         {
@@ -339,8 +339,10 @@ internal sealed class EmbeddedMetadataReader
             return alt.Elements(Rdf + "li").OrderByDescending(e => (string?)e.Attribute(XNamespace.Xml + "lang") == "x-default").Select(e => e.Value.Trim()).FirstOrDefault(v => v.Length > 0);
         }
 
-        return property.Descendants(Rdf + "li").Select(e => e.Value.Trim()).FirstOrDefault(v => v.Length > 0)
-            ?? property.Value.Trim() is { Length: > 0 } value ? value : null;
+        var item = property.Descendants(Rdf + "li").Select(e => e.Value.Trim()).FirstOrDefault(v => v.Length > 0);
+        if (item is not null) return item;
+        var text = property.Value.Trim();
+        return text.Length > 0 ? text : null;
     }
 
     private static List<string> PropertyValues(XElement description, XName name)
@@ -348,7 +350,9 @@ internal sealed class EmbeddedMetadataReader
         var property = description.Element(name);
         if (property is null) return [];
         var values = property.Descendants(Rdf + "li").Select(e => e.Value.Trim()).Where(v => v.Length > 0).Distinct(StringComparer.Ordinal).Take(256).ToList();
-        return values.Count > 0 ? values : property.Value.Trim() is { Length: > 0 } value ? [value] : [];
+        if (values.Count > 0) return values;
+        var text = property.Value.Trim();
+        return text.Length > 0 ? [text] : [];
     }
 
     private void Set(string key, string? value)
