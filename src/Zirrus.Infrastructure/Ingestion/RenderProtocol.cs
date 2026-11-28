@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Zirrus.Application.Ingestion;
+using Zirrus.Domain.Assets;
 
 namespace Zirrus.Infrastructure.Ingestion;
 
@@ -93,5 +94,30 @@ public sealed class HttpImageRenderer(HttpClient http) : IImageRenderer
         var body = await response.Content.ReadFromJsonAsync<RenderResponse>(RenderProtocol.Json, cancellationToken)
             ?? throw new HttpRequestException("renderer sent an empty response");
         return RenderProtocol.ToImages(body, specs);
+    }
+}
+
+/// <summary>Worker-side metadata client for the isolated renderer service.</summary>
+public sealed class HttpMetadataExtractor(HttpClient http) : IMetadataExtractor
+{
+    /// <inheritdoc />
+    public async Task<AssetMetadata?> ExtractAsync(Stream source, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        using var content = new StreamContent(source);
+        using var response = await http.PostAsync(new Uri("/metadata", UriKind.Relative), content, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+        {
+            var problem = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new UnsupportedImageException(problem.Length > 500 ? problem[..500] : problem);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException($"metadata renderer answered {(int)response.StatusCode}", null, response.StatusCode);
+        }
+
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        return json.Trim() == "null" ? null : AssetMetadata.Parse(json);
     }
 }

@@ -3,6 +3,11 @@ using Zirrus.Renderer;
 
 // Isolated renderer service (W4, ingestion-api-ui.md): no secrets, no database, no internet; reachable
 // only by the worker. Every file is parsed in a fresh child process with time and memory limits.
+if (args is [MetadataEndpoint.ExtractMetadataArgument, ..])
+{
+    return await RenderOne.ExtractMetadataAsync();
+}
+
 if (args is [RenderEndpoint.RenderOneArgument, var specs, ..])
 {
     return await RenderOne.RunAsync(specs);
@@ -22,6 +27,7 @@ builder.Services.AddHealthChecks();
 var app = builder.Build();
 app.MapZirrusHealthChecks();
 app.MapPost("/render", RenderEndpoint.HandleAsync);
+app.MapPost("/metadata", MetadataEndpoint.HandleAsync);
 await app.RunAsync();
 return 0;
 

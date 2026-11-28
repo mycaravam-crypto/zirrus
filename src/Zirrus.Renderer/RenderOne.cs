@@ -37,6 +37,24 @@ internal static class RenderOne
         return exitCode;
     }
 
+    /// <summary>Extracts metadata from one original supplied on stdin and writes JSON to stdout.</summary>
+    /// <returns>Zero on success, or the renderer rejection exit code.</returns>
+    public static async Task<int> ExtractMetadataAsync()
+    {
+        try
+        {
+            await using var stdin = Console.OpenStandardInput();
+            var metadata = await new EmbeddedMetadataReader().ExtractAsync(stdin, CancellationToken.None);
+            await Console.Out.WriteAsync(metadata?.Json ?? "null");
+            return 0;
+        }
+        catch (UnsupportedImageException e)
+        {
+            await Console.Error.WriteLineAsync(e.Message);
+            return SubprocessRenderer.RejectedExitCode;
+        }
+    }
+
     /// <summary>Peak resident set size (VmHWM) of this process on Linux; null elsewhere.</summary>
     /// <returns>Bytes, or null.</returns>
     internal static long? PeakRssBytes()

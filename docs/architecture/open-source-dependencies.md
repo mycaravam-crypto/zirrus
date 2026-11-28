@@ -14,7 +14,7 @@ Prefer first-party .NET APIs and maintained permissive OSS. No mandatory paid li
 | Assertions | xUnit built-in assertions; Shouldly optional | Apache-2.0 / BSD-3-Clause | FluentAssertions v8+ |
 | Mocking | Hand-written fakes; NSubstitute if needed | Project Apache-2.0 / BSD-3-Clause | Unnecessary mocking packages |
 | Image rendering | SkiaSharp for JPEG/PNG/WebP (spike recommendation); NetVips if TIFF/HEIC/RAW are added | MIT + bundled BSD/MIT/Apache (GIF decoder MPL-1.1 elected) / MIT wrapper + LGPL-3.0-or-later native bundle | ImageSharp split-license default |
-| Metadata | MetadataExtractor (parity with ExifTool in the spike); ExifTool only if real files show gaps | Apache-2.0; XmpCore terms under review / Perl terms | Proprietary SDK |
+| Metadata | First-party bounded EXIF/IPTC/XMP reader behind `IMetadataExtractor`, using .NET APIs in the isolated renderer | .NET runtime libraries; no additional package | MetadataExtractor/XmpCore (rejected #20); ExifTool unless separately reviewed |
 | Identity | ASP.NET Core OIDC + Keycloak | MIT / Apache-2.0 | Mandatory paid identity server |
 | Load testing | k6 (test-tool exception); Gatling OSS if a permissive tool is required | AGPL-3.0 / Apache-2.0 | NBomber commercial editions |
 | S3-compatible test server | SeaweedFS; MinIO only as test-tool exception | Apache-2.0 / AGPL-3.0 | Production S3 server chosen by default |
@@ -42,7 +42,7 @@ Compare **NetVips** (MIT wrapper; the native package declares LGPL-3.0-or-later)
 
 Measure on identical data: peak RSS on a 50 MP JPEG, thumbnails per minute, startup, EXIF orientation, PNG/WebP output, and corrupt, oversize and EICAR inputs. Record each candidate's native library list.
 
-Evaluate MetadataExtractor for read-only EXIF/IPTC/XMP. Its XMP support depends on XmpCore; include it in the license review. Define the MVP field set (title, creator, keywords, copyright, capture date, GPS) and compare coverage with ExifTool on the corpus. Use ExifTool only for missing fields. Run extraction inside the time- and memory-limited parser process; managed code avoids memory corruption, not DoS. No metadata write-back to originals in MVP.
+The MVP uses a first-party reader for the bounded EXIF, IPTC-IIM and XMP subset, implemented with .NET binary/XML APIs behind `IMetadataExtractor`. It extracts title, creator, keywords, copyright, capture date, GPS and XMP credit. XMP parsing prohibits DTDs and external resolution and caps document size; the entire extraction runs in a fresh time- and memory-limited renderer child process. This is not full XMP specification compliance. MetadataExtractor/XmpCore was rejected in #20; ExifTool is not used as a fallback without a separate license review. No metadata is written back to originals.
 
 ClamAV remains a GPL component requiring separate distribution review; do not replace malware scanning with file extension checks.
 
@@ -63,9 +63,9 @@ Upstream evidence (not a pinned-release audit):
 - NetVips: https://github.com/kleisauke/net-vips ; libvips: https://www.libvips.org/
 - SkiaSharp: https://github.com/mono/SkiaSharp
 - Magick.NET: https://github.com/dlemstra/Magick.NET
-- MetadataExtractor: https://github.com/drewnoakes/metadata-extractor-dotnet
+- MetadataExtractor (historical spike comparison only; rejected in #20): https://github.com/drewnoakes/metadata-extractor-dotnet
 - k6: https://github.com/grafana/k6 ; Gatling: https://github.com/gatling/gatling
 - SeaweedFS: https://github.com/seaweedfs/seaweedfs
 - Commercial terms: https://massient.com/ and https://docs.automapper.io/en/latest/License-configuration.html
 
-At dependency introduction, record pinned version, SPDX expression, license text URL, scope (runtime/build/test), transitive/native SBOM and reviewer. Native NuGet packages (`NetVips.Native`, `SkiaSharp.NativeAssets.Linux`, `Magick.Native`) must list their bundled libraries in the SBOM; NuGet license metadata alone does not show them, so CI checks this (#11). Reject unknown or unapproved terms; do not pin obsolete vulnerable versions merely to retain a former license. Review license changes on upgrades. No candidate has been installed or benchmarked in this PR.
+At dependency introduction, record pinned version, SPDX expression, license text URL, scope (runtime/build/test), transitive/native SBOM and reviewer. Native NuGet packages (`NetVips.Native`, `SkiaSharp.NativeAssets.Linux`, `Magick.Native`) must list their bundled libraries in the SBOM; NuGet license metadata alone does not show them, so CI checks this (#11). Reject unknown or unapproved terms; do not pin obsolete vulnerable versions merely to retain a former license. Review license changes on upgrades. No third-party metadata package is introduced; the first-party parser still requires validation against a representative camera/agency corpus before release.

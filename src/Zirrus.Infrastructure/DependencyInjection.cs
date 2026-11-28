@@ -86,8 +86,8 @@ public static class DependencyInjection
 
     /// <summary>
     /// Adds the ingestion pipeline for the worker: the PostgreSQL job queue, ClamAV scanner
-    /// (<c>Scanner</c> section), the renderer (the isolated service at <c>Renderer:Url</c>, or
-    /// in-process SkiaSharp when no URL is set) and the metadata extractor.
+    /// (<c>Scanner</c> section), the renderer and metadata extractor. Production uses the isolated
+    /// renderer at <c>Renderer:Url</c>; in-process rendering and no-op metadata are for tests/development.
     /// </summary>
     /// <param name="services">Service collection.</param>
     /// <param name="configuration">Application configuration.</param>
@@ -112,9 +112,17 @@ public static class DependencyInjection
                 client.BaseAddress = new Uri(renderer.Url);
                 client.Timeout = renderer.Timeout;
             });
+            services.AddHttpClient<IMetadataExtractor, HttpMetadataExtractor>(client =>
+            {
+                client.BaseAddress = new Uri(renderer.Url);
+                client.Timeout = renderer.Timeout;
+            });
         }
 
-        services.AddSingleton<IMetadataExtractor, NoMetadataExtractor>(); // MetadataExtractor awaits the XmpCore review (#20)
+        if (string.IsNullOrWhiteSpace(renderer.Url))
+        {
+            services.AddSingleton<IMetadataExtractor, NoMetadataExtractor>(); // Development and tests only; production requires the isolated renderer.
+        }
         services.AddScoped<IngestionPipeline>();
         return services;
     }
