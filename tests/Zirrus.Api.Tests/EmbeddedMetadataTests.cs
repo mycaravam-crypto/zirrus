@@ -44,6 +44,44 @@ public sealed class EmbeddedMetadataTests
     }
 
     [Fact]
+    public async Task Reads_exif_gps_coordinates()
+    {
+        var metadata = await ExtractAsync(JpegWithExifGps());
+        Assert.NotNull(metadata);
+        using var document = JsonDocument.Parse(metadata.Json);
+        Assert.Equal(54.5, document.RootElement.GetProperty("gps_latitude").GetDouble(), 5);
+        Assert.Equal(10.0, document.RootElement.GetProperty("gps_longitude").GetDouble(), 5);
+    }
+
+    [Fact]
+    public async Task Reads_iptc_fields_and_keyword_arrays()
+    {
+        var records = new byte[][]
+        {
+            IptcRecord(5, "Press photo"),
+            IptcRecord(25, "coast"),
+            IptcRecord(25, "sea"),
+            IptcRecord(80, "Alex Example"),
+            IptcRecord(116, "Agency 2026"),
+        }.SelectMany(value => value).ToArray();
+        var photoshop = Encoding.ASCII.GetBytes("Photoshop 3.0\\0")
+            .Concat(Encoding.ASCII.GetBytes("8BIM"))
+            .Concat(new byte[] { 0x04, 0x04, 0x00, 0x00 })
+            .Concat(Int32BigEndian(records.Length))
+            .Concat(records)
+            .Concat(records.Length % 2 == 0 ? Array.Empty<byte>() : new byte[] { 0x00 })
+            .ToArray();
+        var metadata = await ExtractAsync(JpegWithSegment(0xed, photoshop));
+        Assert.NotNull(metadata);
+        using var document = JsonDocument.Parse(metadata.Json);
+        var root = document.RootElement;
+        Assert.Equal("Press photo", root.GetProperty("title").GetString());
+        Assert.Equal("Alex Example", root.GetProperty("creator").GetString());
+        Assert.Equal("Agency 2026", root.GetProperty("copyright").GetString());
+        Assert.Equal("coast,sea", string.Join(',', root.GetProperty("keywords").EnumerateArray().Select(value => value.GetString())));
+    }
+
+    [Fact]
     public async Task Rejects_xxe_and_malformed_xmp()
     {
         const string xxe = """
