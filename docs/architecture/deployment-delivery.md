@@ -7,7 +7,7 @@ Docker Engine + Compose v2 on Linux, with Caddy as the only ingress (80/443) and
 - **Services:** web, api, worker, postgres, clamav, caddy, Keycloak candidate, plus a one-off migration container. No queue broker ([ADR 0002](../adr/0002-job-backend.md)). An optional S3-compatible service (SeaweedFS preferred, [ADR 0006](../adr/0006-storage.md)) runs in the test profile.
 - **Persistent data:** PostgreSQL (including the job queue), the asset store volume (originals, quarantine, renditions), ClamAV signatures, identity data and Caddy certificates. Document volume ownership and backup coverage.
 - **Profiles:** dev/test/prod; no default credentials in production.
-- **Images:** pin supported versions/digests after the dependency check; multi-stage builds on minimal .NET and Node base images; non-root where supported.
+- **Images:** base images pinned by version and digest, updated through Dependabot (the Keycloak image in the test override is pinned by version only); multi-stage builds on minimal .NET and Node base images; non-root where supported.
 - **Hardening:** read-only root FS, dropped capabilities, no-new-privileges, resource limits. The parser sandbox has no network; the worker orchestrator keeps the service network.
 
 Observability: Compose healthchecks backed by ASP.NET Core health checks; readiness depends on the database and required services, worker liveness is separate. Structured redacted logs, queue age/failure, API latency/error metrics, disk alerts and OpenTelemetry traces.
@@ -43,7 +43,8 @@ Short-lived branches; each PR references its issues; conventional commits; CODEO
   - pnpm lint, strict TypeScript and Vitest for the web app;
   - OpenAPI contract diff and regeneration check for the TS client;
   - coverage gate #12;
-  - NuGet/npm dependency and license scan, SBOM and container scan.
+  - NuGet/npm dependency and license scan and SBOM;
+  - container image scan: Trivy (Apache-2.0, run as a pinned CI container, not shipped) on every image in `deploy/compose.yaml`, failing on fixable HIGH or CRITICAL findings. Accepted exceptions go in `deploy/trivyignore` with reason, owner and review date.
 - **Release candidate:** E2E critical paths, accessibility and security tests, with report artifacts.
 - **Pipeline security:** least-privilege CI permissions, no secrets in untrusted PR jobs, protected release publishing.
 - **Releases:** SemVer, immutable image tags and digests, OCI labels, signed release artifacts where supported.

@@ -1,0 +1,2 @@
+# Accepted Trivy findings for the image scan gate in CI (W8, #28). One CVE ID per line, each preceded by a
+# comment with the affected image, the reason it does not apply or cannot be fixed yet, the owner and a review date.

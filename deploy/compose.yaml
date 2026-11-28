@@ -117,7 +117,7 @@ services:
   # Malware scanner (GPL-2.0, separate service reached over clamd's TCP protocol; nothing is linked).
   # It needs outbound access for signature updates (freshclam) and is reachable only from the worker.
   clamav:
-    image: clamav/clamav:1.5.4
+    image: clamav/clamav:1.5.4@sha256:7054e3f34308c384ea43cd786ea17abf899bd44af40af9f1b099853d7a5c214e
     security_opt: ["no-new-privileges:true"]
     volumes:
       - clamav_db:/var/lib/clamav

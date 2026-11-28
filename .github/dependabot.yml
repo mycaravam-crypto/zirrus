@@ -44,3 +44,11 @@ updates:
       # .NET images stay on 10.0 with the runtime.
       - dependency-name: "dotnet/*"
         update-types: ["version-update:semver-major"]
+
+  # Images referenced from the Compose files (PostgreSQL, ClamAV, Keycloak in the test override).
+  - package-ecosystem: docker-compose
+    directories: ["/deploy"]
+    schedule: { interval: weekly }
+    groups:
+      compose-images:
+        patterns: ["*"]
